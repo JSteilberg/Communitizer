@@ -42,8 +42,16 @@ def make_csv_dict(file_name):
 
             # Get the type for the value and cast
             tipe = locate(row[tipe_idx])
-            value = tipe(row[val_idx])
+
+            if tipe == bool:
+                value = str2bool(row[val_idx])
+            else:
+                value = tipe(row[val_idx])
 
             out_dict[name] = value
 
     return out_dict
+
+
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")

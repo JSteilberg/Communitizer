@@ -1,6 +1,6 @@
 Name,Details,Datatype,Value
-start_word,Word to signify beginning of a comment,str,|ST1
-stop_word,Word to signify end of a comment,str,"|SP1		"
+start_word,Word to signify beginning of a comment,str,
+stop_word,Word to signify end of a comment,str,
 min_word_count,Tell cleaner to remove words that occur less than min_word_count times,int,1
 remove_stop_words,Remove stop words from the NLTK list of stop words,bool,FALSE
 mean_subtract_grams,Subtract an averaged dictionary of all of reddit from each comment (usually implies remove_stop_words),bool,TRUE
@@ -9,3 +9,7 @@ lowercase,Lowercase all comments as part of preprocessing?,bool,TRUE
 sample_rate,"Proportion of actual comments to process from the given data [0,1]",float,1
 gram_num,n in ngrams,int,1
 subreddit,Subreddit to pick for communitizing,str,all
+remove_links,Should data cleaning remove all links?,bool,TRUE
+remove_punc,Should data cleaning remove all punctuation?,bool,FALSE
+only_alphanum,Remove all characters except alphanumeric ones?,bool,TRUE
+stem_verbs,Should all verbs be stemmed?,bool,TRUE

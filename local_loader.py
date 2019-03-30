@@ -69,9 +69,9 @@ def sample_file_gen(filename,
            flip      - If set to True, samples from all BUT subreddit sub_name
            samp_rate - Proportion of total data to sample
            min_score - Toss comments with less than this amount of score
-    Returns: List of comments constituting a sample
+    Returns: Generator for comments constituting a sample
     """
-    data = list()
+
     file = open(filename, encoding='utf-8', errors='ignore')
 
     # "error correction"
@@ -87,3 +87,18 @@ def sample_file_gen(filename,
             # If the comment is from our subreddit, sample at special rate
             if random.random() <= sample_rate:
                 yield js
+
+
+def sample_clean_file(filename, sample_rate=1):
+    """
+    Purpose: Samples an already cleaned file consisting of comments on individual lines
+    Input: filename    - Location of file to sample
+           sample_rate - Proportion of file to sample
+    Output: Generator for comments expressed as lists of words
+
+    """
+    file = open(filename, encoding='utf-8', errors='ignore')
+
+    for line in file:
+        if random.random() < sample_rate:
+            yield line.strip().split(' ')
