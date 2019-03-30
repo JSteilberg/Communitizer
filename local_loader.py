@@ -54,3 +54,36 @@ def sample_file(filename,
                 data.append(js)
 
     return data
+
+def sample_file_gen(filename,
+                subreddit='all',
+                sample_rate=1,
+                flip=False,
+                min_score=-1e15):
+    """
+    Purpose: Returns a subset of the given comments based on following parameters
+    Input: data      - Data consisting a of a list of comments, which are dictionaries
+                       SHOULD BE CLEANED PRIOR TO INPUT
+           gram_num  - Size of word-level grams to create. e.g. 1 = unigrams
+           sub_name  - Subreddit to sample from, defaults to all reddit
+           flip      - If set to True, samples from all BUT subreddit sub_name
+           samp_rate - Proportion of total data to sample
+           min_score - Toss comments with less than this amount of score
+    Returns: List of comments constituting a sample
+    """
+    data = list()
+    file = open(filename, encoding='utf-8', errors='ignore')
+
+    # "error correction"
+    subreddit = subreddit.lower()
+
+    # Loop through the file
+    for line in file:
+        # Loop through each comment in the dataset
+        js = json.loads(line)
+        if subreddit == 'all' \
+           or (js['subreddit'].lower() == subreddit and not flip) \
+           or (js['subreddit'].lower() != subreddit and flip):
+            # If the comment is from our subreddit, sample at special rate
+            if random.random() <= sample_rate:
+                yield js

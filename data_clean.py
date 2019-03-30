@@ -32,8 +32,6 @@ import pdb
 class DataCleaner:
 
     def __init__(self, data_loc, params_loc):
-        self.vocab = []
-
         self.params = make_csv_dict(params_loc)
         self.data_loc = data_loc
 
@@ -47,11 +45,11 @@ class DataCleaner:
 
     def load_data(self):
         """
-        Purpose:
-        Input:
-        Output:
+        Purpose: Loads and cleans data specified during init
+        Input: Nothing
+        Output: Nothing
         """
-        print("Loading data...")
+        print("Loading...")
         self.raw_str_data = self.clean_data(
             sample_file(self.data_loc,
                         self.subreddit,
@@ -66,6 +64,7 @@ class DataCleaner:
 
         print("Creating vocabulary vector")
         self.vocabulary = self.make_voc_vec(self.ngram_dict)
+
         
     def str_to_ngrams(self, string, gram_num):
         """
@@ -176,19 +175,23 @@ class DataCleaner:
         Returns: Clean comment as a string
                  Returns an empty string if the entire comment was trash
         """
-        comment = self.start_word + " " \
-            + comment['body'].lower() + " " \
-            + self.stop_word
-        comment = comment.replace("deleted", " ")
-        comment = comment.replace("removed", " ")
+        if self.params['lowercase']:
+            comment = comment['body'].lower()
+        else:
+            comment = comment['body']
+            
+        comment = self.start_word + " " + comment + " " + self.stop_word
+        comment = re.sub('((.deleted.)|(.removed.))', ' ', comment)
     
-        comment = re.sub('[^0-9a-zA-Z/\:\'\.\+\- ]+', ' ', comment)
+        #comment = re.sub('[^0-9a-zA-Z/\:\'\.\+\- ]+', ' ', comment)
     
         #comment = comment.replace("gt", " ")
-        #comment = comment.replace("amp", " ")
+        comment = comment.replace(" amp ", " ")
         
         comment = ' '.join(comment.split())
-        if len(comment) < 8:
+
+        # Toss empty comments
+        if len(comment) <= len(self.start_word + "  " + self.stop_word):
             return ''
         else:
             return comment
@@ -224,10 +227,10 @@ class DataCleaner:
         Purpose: Prints the top num elements of a dictionary, sorted by descending value
         Input: Number of top values to print
         """
-        astoops = [(k, dictionary[k]) for k in dictionary]
+        astoops = [(k, self.ngram_dict[k]) for k in self.ngram_dict]
         astoops = sorted(astoops, key=lambda x: x[1], reverse=True)
     
-        for i in range(min(num, len(dictionary))):
+        for i in range(min(num, len(self.ngram_dict))):
             print("{0:0.5f}".format(astoops[i][1]) \
                   + "\t" + astoops[i][0])
     
@@ -258,22 +261,6 @@ class DataCleaner:
     
     
     def main():
-        
-        #print("\n/r/" + subreddit + ": ")
-        #print_top(common, 35)
-
-        #prog_comms = filter_comments(data, 'subreddit', 'politics')
-        #funn_comms = filter_comments(data, 'subreddit', 'programming')
-
-        #vocab = sorted([k for k in gen_norm.keys()])
-        
-        #print("Making comment vectors")
-        #prog_vecs = [make_single_comm_grvec(comm, 1, vocab) for comm in prog_comms[:50]]
-        #funn_vecs = [make_single_comm_grvec(comm, 1, vocab) for comm in funn_comms[:50]]
-
-        prog_vecs =([vec / sum(vec) for vec in prog_vecs])
-        funn_vecs =([vec / sum(vec) for vec in funn_vecs])
-        
         tot = prog_vecs + funn_vecs
         
         print("Fitting spherical kmeans")
