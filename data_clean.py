@@ -17,14 +17,16 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 
+import os
 import random
 import re
 
 import nltk
 import numpy as np
 
-from local_loader import sample_file
+from local_loader import sample_file_gen, sample_clean_file
 from params import make_csv_dict
+from gensim.models import Word2Vec
 
 import pdb
 
@@ -49,14 +51,30 @@ class DataCleaner:
         Input: Nothing
         Output: Nothing
         """
-        print("Loading...")
-        self.raw_str_data = self.clean_data(
-            sample_file(self.data_loc,
-                        self.subreddit,
-                        sample_rate=self.sample_rate,
-                        flip=False,
-                        min_score=self.min_score))
 
+        # This is for things that require no overarching knowledge
+        # of the dataset. For example, removing non-alphanum characters
+        print("First stage cleaning...")
+        stats = self.clean_data_stage_1(
+            sample_file_gen(self.data_loc,
+                            self.subreddit,
+                            sample_rate=self.sample_rate,
+                            flip=False,
+                            min_score=self.min_score))
+
+        #model = Word2Vec(corpus_file='./data/clean/RC_2011-01',size=200, window=3, negative=10, min_count=5, workers=4)
+        #pdb.set_trace()
+
+        # This is for things that rely on stats collected by the
+        # first stage cleaner. For example, removing words of less
+        # than a given frequency, which requires having already gone
+        # over the data once. 
+        print("Second stage cleaning...")
+        self.clean_data_stage_2(
+            sample_clean_file(stats['loc']),
+            stats['unigrams'])
+                                        
+        
         print("Creating " + str(self.gram_num) + "-grams...")
         self.ngram_dict = self.data_to_grdict(self.raw_str_data,
                                               self.gram_num,
@@ -154,21 +172,41 @@ class DataCleaner:
     
         return gram_vec
     
-    def clean_data(self, data):
+    def clean_data_stage_1(self, data):
         """
         Purpose: Given a list of comments, cleans each one
         Input: List of dictionaries corresponding to comments
         Output: List of strings len of which is <= to the len of the input
         """
-        out_data = list()
+        loc = os.path.join(os.path.dirname(self.data_loc),
+                           '../clean/',
+                           os.path.basename(self.data_loc) + "_s1")
+
+        out = open(loc, 'w')
+
+        unigrams = {}
+        
         for comment in data:
-            comment = self.clean_comment(comment)
+            comment = self.clean_comment_stage_1(comment)
             if comment != '':
-                out_data.append(comment)
+                for word in comment.split():
+                    if word not in unigrams:
+                        unigrams[word] = 1
+                    else:
+                        unigrams[word] += 1
+                                        
+                out.write(comment + '\n')
+
+        out.close()
+        
+        stats = {}
+        stats['unigrams'] = unigrams
+        stats['loc'] = loc
+        return stats
+
+                
     
-        return out_data
-    
-    def clean_comment(self, comment):
+    def clean_comment_stage_1(self, comment):
         """
         Purpose: Cleans a given comment, adding stop and start and stop symbols. 
         Input: Comment to be cleaned, as a dictionary
@@ -181,20 +219,51 @@ class DataCleaner:
             comment = comment['body']
             
         comment = self.start_word + " " + comment + " " + self.stop_word
-        comment = re.sub('((.deleted.)|(.removed.))', ' ', comment)
+
+        # Remove deleted comments
+        comment = re.sub('((.deleted.)|(.removed.))', ' ', comment).strip()
+
+        # Remove links
+        if self.params['remove_links']:
+            comment = re.sub('([\[\]])|\(((http:)|(www.)).*\)', ' ', comment).strip()
+        
+        newcom = ""
+        for word in comment.split():
+            # Maybe toss links
+            if self.params['remove_links'] \
+               and ('http:/' in word or 'www.' in word):
+                continue
+            newcom += word + " "
+
+        # Remove bugged out &<> substitutions
+        comment = re.sub('&(amp|gt|lt|nbsp);', ' ', newcom.strip())
+        
+        if self.params['only_alphanum']:
+            comment = re.sub('(\')+', '', comment)
+            comment = re.sub('([^ 0-9a-zA-Z])+', '', comment)
     
-        #comment = re.sub('[^0-9a-zA-Z/\:\'\.\+\- ]+', ' ', comment)
-    
-        #comment = comment.replace("gt", " ")
-        comment = comment.replace(" amp ", " ")
+
         
         comment = ' '.join(comment.split())
 
         # Toss empty comments
         if len(comment) <= len(self.start_word + "  " + self.stop_word):
             return ''
-        else:
-            return comment
+
+        return comment
+
+    def clean_data_stage_2(self, data, uni_dict):
+        loc = os.path.join(os.path.dirname(self.data_loc),
+                           '../clean/',
+                           os.path.basename(self.data_loc)[:-3])
+        print(loc)
+
+        
+        
+        pdb.set_trace()
+            
+
+        
 
     # @@@@@@@@@@ DEPRECATED @@@@@@@@@@
     def filter_comments(self, data, filt_field, value):
@@ -274,7 +343,7 @@ class DataCleaner:
 
         pdb.set_trace()
     
-fleeb = DataCleaner('./data/RC_2007-02', './cfg/clean_params/clean_params.csv')
+fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
 fleeb.load_data()
 
