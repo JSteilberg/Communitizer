@@ -51,16 +51,24 @@ class DataCleaner:
         Input: Nothing
         Output: Nothing
         """
-        print("First stage cleaning...")
-        #stats = self.clean_data_stage_1(
-        #    sample_file_gen(self.data_loc,
-        #                    self.subreddit,
-        #                    sample_rate=self.sample_rate,
-        #                    flip=False,
-        #                    min_score=self.min_score))
 
-        model = Word2Vec(corpus_file='./data/clean/RC_2011-01',size=200, window=3, negative=10, min_count=5, workers=4)
-        pdb.set_trace()
+        # This is for things that require no overarching knowledge
+        # of the dataset. For example, removing non-alphanum characters
+        print("First stage cleaning...")
+        stats = self.clean_data_stage_1(
+            sample_file_gen(self.data_loc,
+                            self.subreddit,
+                            sample_rate=self.sample_rate,
+                            flip=False,
+                            min_score=self.min_score))
+
+        #model = Word2Vec(corpus_file='./data/clean/RC_2011-01',size=200, window=3, negative=10, min_count=5, workers=4)
+        #pdb.set_trace()
+
+        # This is for things that rely on stats collected by the
+        # first stage cleaner. For example, removing words of less
+        # than a given frequency, which requires having already gone
+        # over the data once. 
         print("Second stage cleaning...")
         self.clean_data_stage_2(
             sample_clean_file(stats['loc']),
@@ -172,7 +180,7 @@ class DataCleaner:
         """
         loc = os.path.join(os.path.dirname(self.data_loc),
                            '../clean/',
-                           os.path.basename(self.data_loc))
+                           os.path.basename(self.data_loc) + "_s1")
 
         out = open(loc, 'w')
 
@@ -247,7 +255,10 @@ class DataCleaner:
     def clean_data_stage_2(self, data, uni_dict):
         loc = os.path.join(os.path.dirname(self.data_loc),
                            '../clean/',
-                           os.path.basename(self.data_loc) + '_s2')
+                           os.path.basename(self.data_loc)[:-3])
+        print(loc)
+
+        
         
         pdb.set_trace()
             
@@ -332,7 +343,7 @@ class DataCleaner:
 
         pdb.set_trace()
     
-fleeb = DataCleaner('./data/raw/RC_2011-01', './cfg/clean_params/clean_params.csv')
+fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
 fleeb.load_data()
 
