@@ -27,6 +27,7 @@ import numpy as np
 from local_loader import sample_file_gen, sample_clean_file
 from params import make_csv_dict
 from gensim.models import Word2Vec
+from nltk.stem import PorterStemmer
 
 import pdb
 
@@ -243,12 +244,18 @@ class DataCleaner:
             comment = re.sub('([^ 0-9a-zA-Z])+', '', comment)
     
 
-        
         comment = ' '.join(comment.split())
 
         # Toss empty comments
         if len(comment) <= len(self.start_word + "  " + self.stop_word):
             return ''
+
+        ps = PorterStemmer()
+        stemmed_comment = []
+        for w in comment.split():
+            stemmed_comment.append(ps.stem(w))
+
+        comment = ' '.join(stemmed_comment)
 
         return comment
 
@@ -261,9 +268,7 @@ class DataCleaner:
         
         
         pdb.set_trace()
-            
 
-        
 
     # @@@@@@@@@@ DEPRECATED @@@@@@@@@@
     def filter_comments(self, data, filt_field, value):
@@ -327,22 +332,8 @@ class DataCleaner:
     
         """
         pass
-    
-    
-    def main():
-        tot = prog_vecs + funn_vecs
-        
-        print("Fitting spherical kmeans")
-        skm = SphericalKMeans(n_clusters=2)
-        skm.fit(tot)
 
-        for idx,comm in enumerate(prog_comms[:50] + funn_comms[:50]):
-            print(skm.labels_[idx], ":",comm['body'][:100])
 
-        
-
-        pdb.set_trace()
-    
 fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
 fleeb.load_data()
