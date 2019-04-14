@@ -47,6 +47,8 @@ class DataCleaner:
         self.subreddit   = self.params['subreddit']
         self.min_score   = self.params['min_score']
 
+        self.mappings = []
+
         self.s1_clean_loc = os.path.join(os.path.dirname(self.data_loc),
                                          '../clean/',
                                          os.path.basename(self.data_loc) + "_s1")
@@ -223,7 +225,8 @@ class DataCleaner:
         out = open(self.s1_clean_loc, 'w')
 
         unigrams = {}
-        
+
+        comm_num = 0
         for comment in data:
             comment = self.clean_comment_stage_1(comment)
             if comment != '':
@@ -232,10 +235,13 @@ class DataCleaner:
                         unigrams[word] = 1
                     else:
                         unigrams[word] += 1
-                        
+
+                self.mappings.append(comm_num)
+
                 out.write(comment + '\n')
                 
-
+            comm_num += 1
+            
         out.close()
         
         stats = {}
@@ -311,9 +317,10 @@ class DataCleaner:
 
         out = open(self.s2_clean_loc, 'w')
 
+        new_maps = []
         num_comments = 0
+        
         for comment in data:
-            num_comments += 1
             #print(comment)
             comment = self.clean_comment_stage_2(comment, uni_dict)
             if comment != '':
@@ -322,27 +329,28 @@ class DataCleaner:
                     #    unigrams[word] = 1
                     #else:
                     #    unigrams[word] += 1
-                                        
-                out.write(comment + '\n')
 
+                new_maps.append(self.mappings[num_comments])
+            
+                out.write(comment + '\n')
+            num_comments += 1
+
+            
+        self.mappings = new_maps
+        
         out.close()
-        self.num_s2_comments = num_comments
+        self.num_s2_comments = len(new_maps)
         
     def clean_comment_stage_2(self, comment, uni_dict):
-        #newCom = ""
-
+        """
+        Purpose: Cleans a single comment, mainly removing words that occur
+                 less than a given number of times
+        Input: A single comment and the unigram frequency dictionary
+        Output: A cleaned comment
+        """
         newCom = [word for word in comment \
                   if (word in uni_dict
                       and uni_dict[word] >= self.params['min_word_count'])]
-
-        #for word in comment.split():
-        #    if word in uni_dict:
-        #        if uni_dict[word] < this.params.min_word_count:
-        #            pass
-        #        else:
-        #            newCom += word + " "
-        #    else:
-        #        print("This isn't supposed to happen")
 
         return " ".join(newCom)
 
@@ -374,29 +382,3 @@ class DataCleaner:
                 voc_vec.append(elem)
     
         return sorted(voc_vec)
-    
-
-    def file_to_grams(data_file_name, params):
-        """
-    
-    
-        """
-        pass
-    def main():
-        tot = prog_vecs + funn_vecs
-        
-        for idx,comm in enumerate(prog_comms[:50] + funn_comms[:50]):
-            print(skm.labels_[idx], ":",comm['body'][:100])
-
-
-fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
-
-fleeb.load_data_for_word2vec()
-
-model = fleeb.create_model()
-fleeb.num_s2_comments = 77383
-pdb.set_trace()
-embeds = fleeb.make_comment_embeddings(model)
-
-pdb.set_trace()
-

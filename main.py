@@ -17,24 +17,27 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 
-import numpy as np
 
-from spherecluster import SphericalKMeans
+from datetime import datetime
 
-class Clusternator:
-    
-
-    def __init__(self, data):
-        self.data = data
-
-    def run_k_means(self, num_clusters):
-        self.skm = SphericalKMeans(n_clusters=num_clusters)
-
-        self.skm.fit(self.data)
-
-        return self.skm
-
-        
-        
+from data_clean import DataCleaner
+from cluster import Clusternator
 
 
+cleaner = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
+
+cleaner.load_data_for_word2vec()
+
+print("Creating model...")
+model = cleaner.create_model()
+model.save(str(datetime.now()).replace(':', '.') + "_model")
+
+print("Converting comments to embedding vectors")
+embeds = cleaner.make_comment_embeddings(model)
+
+print("Clustering comments")
+cnator = Clusternator(embeds)
+skm = cnator.run_k_means(3)
+
+import pdb
+pdb.set_trace()
