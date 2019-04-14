@@ -20,6 +20,7 @@
 
 import csv
 from pydoc import locate
+import ast
 
 def make_csv_dict(file_name):
     """
@@ -45,6 +46,8 @@ def make_csv_dict(file_name):
 
             if tipe == bool:
                 value = str2bool(row[val_idx])
+            elif tipe == dict:
+                value = ast.literal_eval(row[val_idx])
             else:
                 value = tipe(row[val_idx])
 
