@@ -101,16 +101,19 @@ class DataCleaner:
             
             one_row /= np.linalg.norm(one_row)
             comm_mat[num] = one_row
+            one_row[:] = 0
 
         return comm_mat
 
     def make_wv_for_string(self, model, string):
         wv = np.zeros([model.vector_size], dtype=np.float32)
-        for word in comment:
+        for word in string.split():
             if word in model.wv:
                 wv += model.wv[word]
             
             wv /= np.linalg.norm(wv)
+
+        return wv
         
     def clean_data_stage_1(self, data):
         """
