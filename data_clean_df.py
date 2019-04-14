@@ -49,7 +49,7 @@ class DataCleanerDF:
 
         self.s2_df_clean_loc = os.path.join(os.path.dirname(self.data_loc),
                                             '../clean/',
-                                            os.path.basename(self.data_loc) + "df_s2")
+                                            os.path.basename(self.data_loc) + "_df_s2")
 
         self.clean_comments_loc = os.path.join(os.path.dirname(self.data_loc),
                                                '../clean/',
