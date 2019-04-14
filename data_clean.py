@@ -35,9 +35,6 @@ from stop_words import get_stop_words
 
 class DataCleaner:
 
-    s1_clean_loc = ""
-    s2_clean_loc = ""
-
     def __init__(self, data_loc, params_loc):
         self.params = make_csv_dict(params_loc)
         self.data_loc = data_loc
@@ -50,6 +47,15 @@ class DataCleaner:
         self.subreddit   = self.params['subreddit']
         self.min_score   = self.params['min_score']
 
+        self.s1_clean_loc = os.path.join(os.path.dirname(self.data_loc),
+                                         '../clean/',
+                                         os.path.basename(self.data_loc) + "_s1")
+
+        self.s2_clean_loc = os.path.join(os.path.dirname(self.data_loc),
+                                         '../clean/',
+                                         os.path.basename(self.data_loc) + "_s2")
+
+
     def load_data_for_word2vec(self):
         """
         Purpose: Loads and cleans data specified during init
@@ -60,7 +66,6 @@ class DataCleaner:
         # This is for things that require no overarching knowledge
         # of the dataset. For example, removing non-alphanum characters
         print("First stage cleaning...")
-        #pdb.set_trace()
         stats = self.clean_data_stage_1(
             sample_file_gen(self.data_loc,
                             self.subreddit,
@@ -74,13 +79,11 @@ class DataCleaner:
         # over the data once. 
         print("Second stage cleaning...")
         self.clean_data_stage_2(
-            sample_clean_file(stats['loc']),
+            sample_clean_file(self.s1_clean_loc),
             stats['unigrams'])
 
         
 
-        pdb.set_trace()
-        
         #print("Creating " + str(self.gram_num) + "-grams...")
         #self.ngram_dict = self.data_to_grdict(self.raw_str_data,
         #                                      self.gram_num,
@@ -89,9 +92,35 @@ class DataCleaner:
         #print("Creating vocabulary vector")
         #self.vocabulary = self.make_voc_vec(self.ngram_dict)
 
-    def create_model():
-        return Word2Vec(corpus_file=this.s2_clean_loc,size=200, window=3, negative=10, min_count=5, workers=4)
+    def create_model(self):
+        return Word2Vec(corpus_file=self.s2_clean_loc,size=200, window=3, negative=10, min_count=4, workers=4)
 
+    def make_comment_embeddings(self, model):
+        comm_mat = np.ndarray([self.num_s2_comments, model.vector_size], dtype=np.float32)
+        one_row = np.zeros([model.vector_size], dtype=np.float32)
+
+        gen = sample_clean_file(self.s2_clean_loc)
+
+        
+        for num,comment in enumerate(gen):
+            for word in comment:
+                if word in model.wv:
+                    one_row += model.wv[word]
+            
+            one_row /= np.linalg.norm(one_row)
+            comm_mat[num] = one_row
+
+        return comm_mat
+
+    def make_wv_for_string(self, model, string):
+        wv = np.zeros([model.vector_size], dtype=np.float32)
+        for word in comment:
+            if word in model.wv:
+                wv += model.wv[word]
+            
+            wv /= np.linalg.norm(wv)
+        
+         
         
     def str_to_ngrams(self, string, gram_num):
         """
@@ -187,16 +216,11 @@ class DataCleaner:
         Input: List of dictionaries corresponding to comments
         Output: List of strings len of which is <= to the len of the input
         """
-        loc = os.path.join(os.path.dirname(self.data_loc),
-                           '../clean/',
-                           os.path.basename(self.data_loc) + "_s1")
 
-        self.s1_clean_loc = loc
-        
-        print("Stage 1 output location", loc)
+        print("Stage 1 output location", self.s1_clean_loc)
 
 
-        out = open(loc, 'w')
+        out = open(self.s1_clean_loc, 'w')
 
         unigrams = {}
         
@@ -216,7 +240,6 @@ class DataCleaner:
         
         stats = {}
         stats['unigrams'] = unigrams
-        stats['loc'] = loc
         return stats
     
     
@@ -284,16 +307,13 @@ class DataCleaner:
         return comment
 
     def clean_data_stage_2(self, data, uni_dict):
-        loc = os.path.join(os.path.dirname(self.data_loc),
-                           '../clean/',
-                           os.path.basename(self.data_loc)[:-3] + "_s2")
-        self.s2_clean_loc = loc
-        
-        print("Stage 2 output location", loc)
+        print("Stage 2 output location", self.s2_clean_loc)
 
-        out = open(loc, 'w')
-        
+        out = open(self.s2_clean_loc, 'w')
+
+        num_comments = 0
         for comment in data:
+            num_comments += 1
             #print(comment)
             comment = self.clean_comment_stage_2(comment, uni_dict)
             if comment != '':
@@ -306,10 +326,8 @@ class DataCleaner:
                 out.write(comment + '\n')
 
         out.close()
+        self.num_s2_comments = num_comments
         
-        
-        pdb.set_trace()
-
     def clean_comment_stage_2(self, comment, uni_dict):
         #newCom = ""
 
@@ -374,6 +392,11 @@ class DataCleaner:
 fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
 fleeb.load_data_for_word2vec()
+
+model = fleeb.create_model()
+fleeb.num_s2_comments = 77383
+pdb.set_trace()
+embeds = fleeb.make_comment_embeddings(model)
 
 pdb.set_trace()
 
