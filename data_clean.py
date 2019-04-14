@@ -310,11 +310,7 @@ class DataCleaner:
         
         pdb.set_trace()
 
-<<<<<<< c70f8a58f83b2dbe37e13c64160dfaf540516c13
-=======
     def clean_comment_stage_2(self, comment, uni_dict):
->>>>>>> Finished stage 2 cleaning
-
         #newCom = ""
 
         newCom = [word for word in comment \
@@ -361,22 +357,19 @@ class DataCleaner:
     
         return sorted(voc_vec)
     
-    
-<<<<<<< c70f8a58f83b2dbe37e13c64160dfaf540516c13
+
     def file_to_grams(data_file_name, params):
         """
     
     
         """
         pass
-
-=======
     def main():
         tot = prog_vecs + funn_vecs
         
         for idx,comm in enumerate(prog_comms[:50] + funn_comms[:50]):
             print(skm.labels_[idx], ":",comm['body'][:100])
->>>>>>> Finished stage 2 cleaning
+
 
 fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
