@@ -26,6 +26,7 @@ from cluster import Clusternator
 from gensim.models import Word2Vec
 import pdb
 import utils
+from spherecluster import VonMisesFisherMixture
 
 DATA_FILE = 'test.dat'
 DATA_FILE2 = 'RC_2007-02'
@@ -51,12 +52,16 @@ def main():
     embeds = cleaner.make_comment_embeddings(model)
 
     print("Clustering comments...")
-    cnator = Clusternator(embeds)
-    skm = cnator.run_k_means(10)
+    cnator = Clusternator(embeds, 10)
+    skm = cnator.run_k_means()
 
-    df['Cluster Num'] = Series(skm.labels_, index=df.index)
+    df['Cluster_Num'] = Series(skm.labels_, index=df.index)
 
-    df.to_csv('./clusters.csv')
+    cluster_commonword_dict = cnator.get_clusterwords(df, 5)
+    utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
+
+    # df.to_csv('./clusters.csv')
+    pdb.set_trace()
 
 
 main()
