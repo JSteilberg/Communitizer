@@ -29,7 +29,7 @@ import utils
 from spherecluster import VonMisesFisherMixture
 
 DATA_FILE = 'test.dat'
-DATA_FILE2 = 'RC_2007-02'
+DATA_FILE2 = 'RC_2011-01'
 
 
 def main():
