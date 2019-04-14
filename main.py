@@ -30,12 +30,12 @@ cleaner.load_data_for_word2vec()
 
 print("Creating model...")
 model = cleaner.create_model()
-model.save(str(datetime.now()).replace(':', '.') + "_model")
+model.save("./models/" + str(datetime.now()).replace(':', '.') + "_model")
 
-print("Converting comments to embedding vectors")
+print("Converting comments to embedding vectors...")
 embeds = cleaner.make_comment_embeddings(model)
 
-print("Clustering comments")
+print("Clustering comments...")
 cnator = Clusternator(embeds)
 skm = cnator.run_k_means(3)
 
