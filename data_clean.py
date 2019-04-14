@@ -84,16 +84,6 @@ class DataCleaner:
             sample_clean_file(self.s1_clean_loc),
             stats['unigrams'])
 
-        
-
-        #print("Creating " + str(self.gram_num) + "-grams...")
-        #self.ngram_dict = self.data_to_grdict(self.raw_str_data,
-        #                                      self.gram_num,
-        #                                      normalize=False)
-
-        #print("Creating vocabulary vector")
-        #self.vocabulary = self.make_voc_vec(self.ngram_dict)
-
     def create_model(self):
         return Word2Vec(corpus_file=self.s2_clean_loc,size=200, window=3, negative=10, min_count=4, workers=4)
 
@@ -122,96 +112,6 @@ class DataCleaner:
             
             wv /= np.linalg.norm(wv)
         
-         
-        
-    def str_to_ngrams(self, string, gram_num):
-        """
-        Purpose: Returns a tuple of the n-grams for a string
-        Input: string    - String to convert into ngrams
-               gram_num  - Number of n-grams to make for the string
-        Returns: Tuple of n-grams
-        """
-        n_grams = nltk.ngrams(nltk.word_tokenize(string), gram_num)
-        return [' '.join(n_gram) for n_gram in n_grams]
-
-    def normalize(self, dictionary):
-        """
-        Purpose: Divides each value in a dictionary by the sum of all values
-        Input: Dictionary with number values
-        Returns: Dictionary with number values in [0..1]
-        """
-        minimum = min(dictionary.values())
-        total   = max(dictionary.values()) - minimum 
-        return {k : (v - minimum) / total \
-                for k,v in dictionary.items()}
-
-    def data_to_grdict(self, data, gram_num, normalize=False):
-        """
-        Purpose: Turns a list of strings into a dictionary of n-gram occurrences
-        Input: data      - List of strings
-               gram_num  - 'n' in n-gram
-               normalize - Divide all dictionary values by the max value?
-        
-        """
-        out_dict = dict()
-        
-        for comment in data:
-            for n_gram in self.str_to_ngrams(comment, gram_num):
-                if n_gram in out_dict:
-                    out_dict[n_gram] += 1
-                else:
-                    out_dict[n_gram] = 1
-
-        if normalize:
-            out_dict = normalize(out_dict)
-
-        return out_dict
-
-    def data_to_grvec(self, data, vocabulary, gram_num, normalize):
-        """
-        Purpose: Turns a list of strings into a list of n-gram vectors
-        Input: data       - List of strings (bodies of comments)
-               vocabulary - List of strings constituting words in the vocabulary
-               gram_num   - n in n-grams
-               normalize  - Normalize each vector to be a unit vector?
-        Output: 
-        """
-        outvec = np.zeros((len(data), len(vocabulary)))
-
-        for i in range(len(data)):
-            outvec[i] = comm_to_grvec(data[i], vocabulary, gram_num, normalize)
-
-        return outvec
-
-    def comm_to_grvec(self, comment, vocabulary, gram_num, normalize):
-        """
-        Purpose: Takes a single cleaned comment and converts it into a vector of size
-                  len(vocabulary).
-        Input: comment    - Cleaned comment string
-               vocabulary - List of strings constituting words in the vocabulary
-               gram_num   - N in n-grams for the vocabulary
-               normalize  - If False, returns vector where 1 in position i indicates 
-                            presence of a n-gram in position i in the vocabulary
-                            If True, normalizes the vector so that it is a unit vector 
-        Returns: Vector of size len(vocabulary)
-        """
-        # Allocate the output vector
-        gram_vec = np.zeros(len(vocabulary))
-    
-        n_grams = [gr for gr in self.str_to_ngrams(comment, gram_num)]
-    
-        # Loop through all the n-grams
-        for gram in n_grams:
-            if gram in vocabulary:
-                gram_vec[vocabulary.index(gram)] = 1
-                # Presence vs not presence probably less noisy than total #
-                # gram_vec[vocabulary.index(asonestr)] += 1
-            else:
-                #print(asonestr)
-                pass
-    
-        return gram_vec
-    
     def clean_data_stage_1(self, data):
         """
         Purpose: Given a list of comments, cleans each one
@@ -354,31 +254,3 @@ class DataCleaner:
 
         return " ".join(newCom)
 
-    def print_top(self, num):
-        """
-        Purpose: Prints the top num elements of a dictionary, sorted by descending value
-        Input: Number of top values to print
-        """
-        astoops = [(k, self.ngram_dict[k]) for k in self.ngram_dict]
-        astoops = sorted(astoops, key=lambda x: x[1], reverse=True)
-    
-        for i in range(min(num, len(self.ngram_dict))):
-            print("{0:0.5f}".format(astoops[i][1]) \
-                  + "\t" + astoops[i][0])
-    
-    def make_voc_vec(self, dictionary):
-        """
-        Purpose: Creates a vocabulary vector from a given dictionary
-        Input: Dictionary (Usually of unigram frequencies, NOT normalized)
-        Output: List of words, sorted
-        """
-    
-        min_freq   = self.params['min_word_count']
-        #remove_avg = clean_params['mean_subtract_grams']
-    
-        voc_vec = list()
-        for elem in dictionary:
-            if dictionary[elem] > min_freq:
-                voc_vec.append(elem)
-    
-        return sorted(voc_vec)
