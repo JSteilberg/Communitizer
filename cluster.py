@@ -51,48 +51,57 @@ class Clusternator:
             cluster_commonword_dict[c_num] = most_common_words
         return cluster_commonword_dict
 
-    def get_cluster_subreddit(self, df):
+    def get_cluster_stats(self, df):
         """
-        Purpose: Given some df, it determines the subreddit
-                 of each of the clusters
-        Input: Given a df, determine the subreddit of each cluster
-               (based off of majority)
-        Output: Dictionary with {Cluster: Subreddit}
+        Purpose: Given some df, it determines the size of each cluster
+                 and the makeup by percentage subreddit.
+        Input:  DF
+        Output: Dictionary with {Cluster: {size:   n
+                                           Subreddit1: percentage
+                                           Subreddit2: percentage
+                                           ...}}
         """
         cluster_subreddit_dict = dict()
         for c_num in range(0, self.n_cluster):
             cluster_df = df.loc[df['Cluster_Num'] == c_num]
-            most_common_subreddit = None
             subreddit_counts = Counter()
 
             for row in cluster_df.itertuples():
                 subreddit = getattr(row, "Subreddit")
                 utils.increment_dict(subreddit, subreddit_counts, 1)
-                most_common_subreddit = subreddit_counts.most_common(1)
-            cluster_subreddit_dict[c_num] = most_common_subreddit[0][0]
+
+            cluster_stats = dict({
+                'cluster_post_count': len(cluster_df.index)
+            })
+
+            total_subreddit_count = sum(subreddit_counts.values())
+            for key, value in subreddit_counts.items():
+                cluster_stats[key] = value / total_subreddit_count
+
+            cluster_subreddit_dict[c_num] = cluster_stats
 
         print(str(cluster_subreddit_dict))
         return cluster_subreddit_dict
 
-    def evaluate_cluster(self, df):
-        """
-        Purpose: Given some df, containing subreddits and clusternumbers
-                 determine what percentage are in the wrong cluster
-        Input: df
-        Output: percentage of subreddits in the wrong cluster
-        """
-        cluster_subreddit_dict = self.get_cluster_subreddit(df)
-        correct = 0
-        total = 0
-
-        for c_num in range(0, self.n_cluster):
-            cluster_df = df.loc[df['Cluster_Num'] == c_num]
-            correct_subreddit = cluster_subreddit_dict[c_num]
-
-            for row in cluster_df.itertuples():
-                subreddit = getattr(row, "Subreddit")
-                if subreddit == correct_subreddit:
-                    correct += 1
-                total += 1
-
-        return correct / total
+    # def evaluate_cluster(self, df):
+    #     """
+    #     Purpose: Given some df, containing subreddits and clusternumbers
+    #              determine what percentage are in the wrong cluster
+    #     Input: df
+    #     Output: percentage of subreddits in the wrong cluster
+    #     """
+    #     cluster_subreddit_dict = self.get_cluster_subreddit(df)
+    #     correct = 0
+    #     total = 0
+    #
+    #     for c_num in range(0, self.n_cluster):
+    #         cluster_df = df.loc[df['Cluster_Num'] == c_num]
+    #         correct_subreddit = cluster_subreddit_dict[c_num]
+    #
+    #         for row in cluster_df.itertuples():
+    #             subreddit = getattr(row, "Subreddit")
+    #             if subreddit == correct_subreddit:
+    #                 correct += 1
+    #             total += 1
+    #
+    #     return correct / total

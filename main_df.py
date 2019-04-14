@@ -62,7 +62,7 @@ def main():
 
     df.to_csv('./clusters.csv')
     print("Evaluating Clusters...")
-    print(cnator.evaluate_cluster(df))
+    cnator.get_cluster_stats(df)
     pdb.set_trace()
 
 
