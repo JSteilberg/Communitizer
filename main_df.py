@@ -29,8 +29,7 @@ import utils
 from spherecluster import VonMisesFisherMixture
 
 DATA_FILE = 'test.dat'
-DATA_FILE2 = 'RC_2011-01'
-
+DATA_FILE2 = 'RC_2015-06'
 
 def main():
     data = DATA_FILE2
@@ -52,15 +51,15 @@ def main():
     embeds = cleaner.make_comment_embeddings(model)
 
     print("Clustering comments...")
-    cnator = Clusternator(embeds, 10)
+    cnator = Clusternator(embeds, 12)
     skm = cnator.run_k_means()
 
     df['Cluster_Num'] = Series(skm.labels_, index=df.index)
 
-    cluster_commonword_dict = cnator.get_clusterwords(df, 5)
+    cluster_commonword_dict = cnator.get_clusterwords(df, 15)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
 
-    # df.to_csv('./clusters.csv')
+    df.to_csv('./clusters.csv')
     pdb.set_trace()
 
 
