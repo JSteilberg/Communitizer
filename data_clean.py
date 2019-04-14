@@ -24,7 +24,7 @@ import re
 import nltk
 import numpy as np
 
-from local_loader import sample_file_gen, sample_clean_file
+from local_loader import sample_file_gen_multi, sample_clean_file
 from params import make_csv_dict
 from gensim.models import Word2Vec
 from nltk.stem import PorterStemmer
@@ -44,7 +44,7 @@ class DataCleaner:
         self.start_word  = self.params['start_word']
         self.stop_word   = self.params['stop_word']
         self.sample_rate = self.params['sample_rate']
-        self.subreddit   = self.params['subreddit']
+        self.subreddits   = self.params['subreddits']
         self.min_score   = self.params['min_score']
 
         self.mappings = []
@@ -69,8 +69,8 @@ class DataCleaner:
         # of the dataset. For example, removing non-alphanum characters
         print("First stage cleaning...")
         stats = self.clean_data_stage_1(
-            sample_file_gen(self.data_loc,
-                            self.subreddit,
+            sample_file_gen_multi(self.data_loc,
+                            self.subreddits,
                             sample_rate=self.sample_rate,
                             flip=False,
                             min_score=self.min_score))
