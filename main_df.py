@@ -19,32 +19,44 @@
 
 
 from datetime import datetime
-
 from pandas import Series
-
 from data_clean import DataCleaner
 from data_clean_df import DataCleanerDF
-
 from cluster import Clusternator
-
-
-cleaner = DataCleanerDF('./data/raw/test.dat', './cfg/clean_params/clean_params.csv')
-
-cleaner.load_data_for_word2vec()
-
-print("Creating model...")
-model = cleaner.create_model()
-model.save("./models/" + str(datetime.now()).replace(':', '.') + "_model")
-
-print("Converting comments to embedding vectors...")
-embeds = cleaner.make_comment_embeddings(model)
-
-print("Clustering comments...")
-cnator = Clusternator(embeds)
-skm = cnator.run_k_means(2)
-
-df = cleaner.df
-df['Cluster Num'] = Series(skm.labels_, index=df.index)
-
+from gensim.models import Word2Vec
 import pdb
-pdb.set_trace()
+import utils
+
+DATA_FILE = 'test.dat'
+DATA_FILE2 = 'RC_2007-02'
+
+
+def main():
+    data = DATA_FILE2
+    cleaner = DataCleanerDF('./data/raw/' + data, './cfg/clean_params/clean_params.csv')
+
+    cleaner.load_data_for_word2vec()
+
+    print("Getting model...")
+    model_filepath = "./models/" + str(data + "_model")
+    if utils.filepath_exists(model_filepath):
+        model = Word2Vec.load(model_filepath)
+    else:
+        model = cleaner.create_model()
+        model.save(model_filepath)
+
+    df = cleaner.df
+
+    print("Converting comments to embedding vectors...")
+    embeds = cleaner.make_comment_embeddings(model)
+
+    print("Clustering comments...")
+    cnator = Clusternator(embeds)
+    skm = cnator.run_k_means(10)
+
+    df['Cluster Num'] = Series(skm.labels_, index=df.index)
+
+    df.to_csv('./clusters.csv')
+
+
+main()
