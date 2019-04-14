@@ -30,6 +30,7 @@ from gensim.models import Word2Vec
 from nltk.stem import PorterStemmer
 
 import pdb
+from stop_words import get_stop_words
 
 
 class DataCleaner:
@@ -245,6 +246,17 @@ class DataCleaner:
     
 
         comment = ' '.join(comment.split())
+
+        stop_words = get_stop_words('en')
+        stop_words = stop_words + ['like', 'just', 'can', 'think', 'will',
+                                   'know', 'get', 'really']
+
+        non_stop_words = []
+        for word in comment.split():
+            if word not in stop_words:
+                non_stop_words.append(word)
+
+        comment = ' '.join(non_stop_words)
 
         # Toss empty comments
         if len(comment) <= len(self.start_word + "  " + self.stop_word):
