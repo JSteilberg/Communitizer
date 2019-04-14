@@ -35,6 +35,9 @@ from stop_words import get_stop_words
 
 class DataCleaner:
 
+    s1_clean_loc = ""
+    s2_clean_loc = ""
+
     def __init__(self, data_loc, params_loc):
         self.params = make_csv_dict(params_loc)
         self.data_loc = data_loc
@@ -47,7 +50,7 @@ class DataCleaner:
         self.subreddit   = self.params['subreddit']
         self.min_score   = self.params['min_score']
 
-    def load_data(self):
+    def load_data_for_word2vec(self):
         """
         Purpose: Loads and cleans data specified during init
         Input: Nothing
@@ -57,15 +60,13 @@ class DataCleaner:
         # This is for things that require no overarching knowledge
         # of the dataset. For example, removing non-alphanum characters
         print("First stage cleaning...")
+        #pdb.set_trace()
         stats = self.clean_data_stage_1(
             sample_file_gen(self.data_loc,
                             self.subreddit,
                             sample_rate=self.sample_rate,
                             flip=False,
                             min_score=self.min_score))
-
-        #model = Word2Vec(corpus_file='./data/clean/RC_2011-01',size=200, window=3, negative=10, min_count=5, workers=4)
-        #pdb.set_trace()
 
         # This is for things that rely on stats collected by the
         # first stage cleaner. For example, removing words of less
@@ -75,15 +76,21 @@ class DataCleaner:
         self.clean_data_stage_2(
             sample_clean_file(stats['loc']),
             stats['unigrams'])
-                                        
-        
-        print("Creating " + str(self.gram_num) + "-grams...")
-        self.ngram_dict = self.data_to_grdict(self.raw_str_data,
-                                              self.gram_num,
-                                              normalize=False)
 
-        print("Creating vocabulary vector")
-        self.vocabulary = self.make_voc_vec(self.ngram_dict)
+        
+
+        pdb.set_trace()
+        
+        #print("Creating " + str(self.gram_num) + "-grams...")
+        #self.ngram_dict = self.data_to_grdict(self.raw_str_data,
+        #                                      self.gram_num,
+        #                                      normalize=False)
+
+        #print("Creating vocabulary vector")
+        #self.vocabulary = self.make_voc_vec(self.ngram_dict)
+
+    def create_model():
+        return Word2Vec(corpus_file=this.s2_clean_loc,size=200, window=3, negative=10, min_count=5, workers=4)
 
         
     def str_to_ngrams(self, string, gram_num):
@@ -184,6 +191,11 @@ class DataCleaner:
                            '../clean/',
                            os.path.basename(self.data_loc) + "_s1")
 
+        self.s1_clean_loc = loc
+        
+        print("Stage 1 output location", loc)
+
+
         out = open(loc, 'w')
 
         unigrams = {}
@@ -196,8 +208,9 @@ class DataCleaner:
                         unigrams[word] = 1
                     else:
                         unigrams[word] += 1
-                                        
+                        
                 out.write(comment + '\n')
+                
 
         out.close()
         
@@ -205,8 +218,7 @@ class DataCleaner:
         stats['unigrams'] = unigrams
         stats['loc'] = loc
         return stats
-
-                
+    
     
     def clean_comment_stage_1(self, comment):
         """
@@ -274,39 +286,47 @@ class DataCleaner:
     def clean_data_stage_2(self, data, uni_dict):
         loc = os.path.join(os.path.dirname(self.data_loc),
                            '../clean/',
-                           os.path.basename(self.data_loc)[:-3])
-        print(loc)
+                           os.path.basename(self.data_loc)[:-3] + "_s2")
+        self.s2_clean_loc = loc
+        
+        print("Stage 2 output location", loc)
 
+        out = open(loc, 'w')
+        
+        for comment in data:
+            #print(comment)
+            comment = self.clean_comment_stage_2(comment, uni_dict)
+            if comment != '':
+                #for word in comment.split():
+                    #if word not in unigrams:
+                    #    unigrams[word] = 1
+                    #else:
+                    #    unigrams[word] += 1
+                                        
+                out.write(comment + '\n')
+
+        out.close()
         
         
         pdb.set_trace()
 
+    def clean_comment_stage_2(self, comment, uni_dict):
+        #newCom = ""
 
-    # @@@@@@@@@@ DEPRECATED @@@@@@@@@@
-    def filter_comments(self, data, filt_field, value):
-        """
-        Purpose: Filters comments, returning those who match the input requirements.
-        Input: data       - List of comments (dictionaries)
-               filt_field - Field in the comment dictionary to filter on 
-               value      - Value for the field
-        Returns: List of comments that meet given criteria
-        """
-        if type(data) == str:
-            comms = [k for k in data if k[filt_field].lower() == value]
-        else:
-            comms = [k for k in data if k[filt_field] == value]
-    
-        newcoms = list()
-        for comm in comms:
-            if '[deleted]' in comm['body'] \
-               or '[removed]' in comm['body'] \
-               or (self.start_word + ' ' + self.stop_word) in comm['body']:
-                continue
-    
-            comm['body'] = clean_comment(comm)
-            newcoms.append(comm)
+        newCom = [word for word in comment \
+                  if (word in uni_dict
+                      and uni_dict[word] >= self.params['min_word_count'])]
 
-        return newcoms
+        #for word in comment.split():
+        #    if word in uni_dict:
+        #        if uni_dict[word] < this.params.min_word_count:
+        #            pass
+        #        else:
+        #            newCom += word + " "
+        #    else:
+        #        print("This isn't supposed to happen")
+
+        return " ".join(newCom)
 
     def print_top(self, num):
         """
@@ -337,18 +357,23 @@ class DataCleaner:
     
         return sorted(voc_vec)
     
-    
+
     def file_to_grams(data_file_name, params):
         """
     
     
         """
         pass
+    def main():
+        tot = prog_vecs + funn_vecs
+        
+        for idx,comm in enumerate(prog_comms[:50] + funn_comms[:50]):
+            print(skm.labels_[idx], ":",comm['body'][:100])
 
 
 fleeb = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
 
-fleeb.load_data()
+fleeb.load_data_for_word2vec()
 
 pdb.set_trace()
 

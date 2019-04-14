@@ -1,7 +1,7 @@
 Name,Details,Datatype,Value
 start_word,Word to signify beginning of a comment,str,
 stop_word,Word to signify end of a comment,str,
-min_word_count,Tell cleaner to remove words that occur less than min_word_count times,int,1
+min_word_count,Tell cleaner to remove words that occur less than min_word_count times,int,3
 remove_stop_words,Remove stop words from the NLTK list of stop words,bool,FALSE
 mean_subtract_grams,Subtract an averaged dictionary of all of reddit from each comment (usually implies remove_stop_words),bool,TRUE
 min_score,Minimum score required to keep a comment,int,-1000000
