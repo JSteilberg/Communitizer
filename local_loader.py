@@ -55,6 +55,17 @@ def sample_file(filename,
 
     return data
 
+def get_num_lines(filename):
+    """
+    Purpose: Counts the number of lines in a file
+    Input: A file
+    Output: Number of lines in the file
+    """
+    with open(filename) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+
 def sample_file_gen(filename,
                 subreddit='all',
                 sample_rate=1,
@@ -65,7 +76,7 @@ def sample_file_gen(filename,
     Input: data      - Data consisting a of a list of comments, which are dictionaries
                        SHOULD BE CLEANED PRIOR TO INPUT
            gram_num  - Size of word-level grams to create. e.g. 1 = unigrams
-           sub_name  - Subreddit to sample from, defaults to all reddit
+           subreddit - Subreddit to sample from, defaults to all reddit
            flip      - If set to True, samples from all BUT subreddit sub_name
            samp_rate - Proportion of total data to sample
            min_score - Toss comments with less than this amount of score
@@ -87,6 +98,39 @@ def sample_file_gen(filename,
             # If the comment is from our subreddit, sample at special rate
             if random.random() <= sample_rate:
                 yield js
+
+
+def sample_file_gen_multi(filename,
+                subreddits={'all': 1.0},
+                flip=False,
+                min_score=-1e15):
+    """
+    Purpose: Returns a subset of the given comments based on following parameters
+    Input: data       - Data consisting a of a list of comments, which are dictionaries
+                        SHOULD BE CLEANED PRIOR TO INPUT
+           gram_num   - Size of word-level grams to create. e.g. 1 = unigrams
+           subreddits - Subreddits to sample from, defaults to all reddit; includes samp rate
+           flip       - If set to True, samples from all BUT subreddit sub_name
+           min_score  - Toss comments with less than this amount of score
+    Returns: Generator for comments constituting a sample
+    """
+
+    file = open(filename, encoding='utf-8', errors='ignore')
+
+    # "error correction"n
+    # subreddit = subreddit.lower()
+
+    # Loop through the file
+    for line in file:
+        # Loop through each comment in the dataset
+        js = json.loads(line)
+        if 'all' in subreddits  \
+           or (js['subreddit'].lower() in subreddits and not flip) \
+           or (js['subreddit'].lower() in subreddits and flip):
+            # If the comment is from our subreddit, sample at special rate
+            if random.random() <= subreddits[js['subreddit'].lower()]:
+                yield js
+
 
 
 def sample_clean_file(filename, sample_rate=1):
