@@ -59,7 +59,10 @@ def main():
     cluster_commonword_dict = cnator.get_clusterwords(df, 15)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
 
+
     df.to_csv('./clusters.csv')
+    print("Evaluating Clusters...")
+    print(cnator.evaluate_cluster(df))
     pdb.set_trace()
 
 

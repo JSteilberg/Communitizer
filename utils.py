@@ -15,8 +15,12 @@ def filepath_exists(filepath):
 def count_unigrams(string):
     unigrams = Counter()
     for word in string.split():
-        if word not in unigrams:
-            unigrams[word] = 1
-        else:
-            unigrams[word] += 1
+        increment_dict(word, unigrams, 1)
     return unigrams
+
+
+def increment_dict(key, dictionary, increment):
+    if key not in dictionary:
+        dictionary[key] = increment
+    else:
+        dictionary[key] += increment
