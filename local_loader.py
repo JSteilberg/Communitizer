@@ -20,6 +20,7 @@
 import json
 import random
 
+
 def sample_file(filename,
                 subreddit='all',
                 sample_rate=1,
@@ -55,6 +56,7 @@ def sample_file(filename,
 
     return data
 
+
 def get_num_lines(filename):
     """
     Purpose: Counts the number of lines in a file
@@ -65,6 +67,7 @@ def get_num_lines(filename):
         for i, l in enumerate(f):
             pass
     return i + 1
+
 
 def sample_file_gen(filename,
                 subreddit='all',
@@ -131,7 +134,6 @@ def sample_file_gen_multi(filename,
             elif 'all' in subreddits:
                 if random.random() <= subreddits['all']:
                     yield js
-
 
 
 def sample_clean_file(filename, sample_rate=1):

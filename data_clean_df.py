@@ -68,7 +68,6 @@ class DataCleanerDF:
         stats = self.clean_data_stage_1(
             sample_file_gen_multi(self.data_loc,
                             self.subreddits,
-                            flip=False,
                             min_score=self.min_score))
 
         # This is for things that rely on stats collected by the

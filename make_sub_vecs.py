@@ -18,20 +18,23 @@
 ################################################################################
 
 import numpy as np
-from gensim.models import Word2Vec
-
 import pdb
-
+from gensim.models import Word2Vec
+from pandas import Series
 from local_loader import sample_file_gen_multi
 from data_clean_df import DataCleanerDF
+from cluster import Clusternator
 
 FILE = './data/raw/' + 'RC_2007-02'
-MODEL = './models/' + 'RC_2015-06_model'
+# MODEL = './models/' + 'RC_2015-06_model'
+MODEL = './models/' + 'RC_2007-02_model'
 CLEAN = './cfg/' + 'clean_params/clean_params.csv'
 NUM_WORDS = 30
-SUBS = ['politics', 'programming', 'science']
+# SUBS = ['politics', 'programming', 'science']
+SUBS = ['programming']
 
 ALL_SAMP_RATE = .2
+
 
 def print_top(uni_dict, num):
     for subreddit in uni_dict:
@@ -50,7 +53,7 @@ def get_top_keys(uni_dict, num):
     return [k[0] for k in topnum]
 
 
-def create_sub_embed_dict(dc, file):
+def create_sub_embed_dict(dc, file, model):
     SUBS.append('all')
     sub_dict = dict(zip(SUBS, np.append(np.ones(len(SUBS) - 1), ALL_SAMP_RATE)))
 
@@ -97,11 +100,8 @@ def create_sub_embed_dict(dc, file):
             continue
 
         for word in uni_dict[subreddit]:
-            uni_dict[subreddit][word] -= 1.1 * uni_dict['all'][word]
+            uni_dict[subreddit][word] -= 1.0 * uni_dict['all'][word]
 
-    print("Loading Word2Vec model...")
-
-    model = Word2Vec.load(MODEL)
     embed_dict = dict()
 
     print("Creating embeddings per subreddit...")
@@ -119,6 +119,28 @@ def create_sub_embed_dict(dc, file):
 
 def main():
     dc = DataCleanerDF(FILE, CLEAN)
-    sub_embed_dict = create_sub_embed_dict(dc, FILE)
+
+    print("Loading Word2Vec model...")
+    model = Word2Vec.load(MODEL)
+
+    sub_embed_dict = create_sub_embed_dict(dc, FILE, model)
+
+    print("Preparing comments to cluster...")
+    dc.load_data_for_word2vec()
+    embeds = dc.make_comment_embeddings(model)
+    np.random.shuffle(embeds)
+
+    df = dc.df
+
+    print("Clustering comments...")
+    cnator = Clusternator(embeds, 3)
+    skm = cnator.run_k_means()
+
+    df['Cluster_Num'] = Series(skm.labels_, index=df.index)
+
+    print("Calculating cluster subreddit similarity...")
+    sim_df = cnator.get_subreddit_similarity(df, sub_embed_dict, model, 10)
+    pdb.set_trace()
+
 
 main()
