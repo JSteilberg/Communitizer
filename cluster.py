@@ -17,13 +17,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 
-import numpy as np
 from collections import Counter
 from spherecluster import SphericalKMeans
 import utils
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-import pdb
 
 
 class Clusternator:
@@ -111,10 +109,10 @@ class Clusternator:
             cluster_embedding = utils.get_embedding(model, utils.get_top_n_words(cluster_df, n))
             for subreddit in sub_embed_dict:
                 subreddit_embedding = sub_embed_dict[subreddit]
-                pdb.set_trace()
                 sub_clust_sim = abs(cosine_similarity([cluster_embedding],
                                                       [subreddit_embedding])[0][0])
                 d.append((c_num, subreddit, sub_clust_sim))
-            df = pd.DataFrame(d, columns=('Cluster_Num', 'Subreddit', 'Similarity'))
 
-        return df
+        res_df = pd.DataFrame(d, columns=('Cluster_Num', 'Subreddit', 'Similarity'))
+
+        return res_df
