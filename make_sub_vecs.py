@@ -42,11 +42,13 @@ def print_top(uni_dict, num):
         for word in topnum:
             print("    " + str(word[0]) + ": " + str(word[1]))
 
+
 def get_top_keys(uni_dict, num):
     topnum =  sorted(uni_dict.items(),
                      key=lambda x: x[1],
                      reverse=True)[:num]
     return [k[0] for k in topnum]
+
 
 def main():
     dc = DataCleanerDF('', CLEAN)
@@ -57,6 +59,8 @@ def main():
     uni_dict = dict()
     for key in SUBS:
         uni_dict[key] = dict()
+
+    print("Calculating unique unigrams per subreddit and normalizing...")
 
     # Loop over all the comments
     for comment in sample_file_gen_multi(FILE, subreddits=sub_dict, min_score=2):
@@ -96,20 +100,24 @@ def main():
 
         for word in uni_dict[subreddit]:
             uni_dict[subreddit][word] -= 1.1 * uni_dict['all'][word]
-        
+
+    print("Loading Word2Vec model...")
 
     model = Word2Vec.load(MODEL)
     embed_dict = dict()
+
+    print("Creating embeddings per subreddit...")
     for subreddit in uni_dict:
         vect = np.zeros(model.vector_size, dtype=np.float32)
         for word in get_top_keys(uni_dict[subreddit], NUM_WORDS):
-            vect += model[word]
+            if word in model.wv:
+                vect += model[word]
 
-        vect /= np.linalg.norm(vect)#np.float32(NUM_WORDS)
+        vect /= np.linalg.norm(vect)
         embed_dict[subreddit] = vect
     
     pdb.set_trace()
 
-    return uni_dict
+    return embed_dict
 
 main()
