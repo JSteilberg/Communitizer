@@ -27,9 +27,10 @@ from gensim.models import Word2Vec
 import pdb
 import utils
 from spherecluster import VonMisesFisherMixture
+import numpy as np
 
 DATA_FILE = 'test.dat'
-DATA_FILE2 = 'RC_2015-06'
+DATA_FILE2 = 'RC_2007-06'
 
 def main():
     data = DATA_FILE2
@@ -49,6 +50,7 @@ def main():
 
     print("Converting comments to embedding vectors...")
     embeds = cleaner.make_comment_embeddings(model)
+    np.random.shuffle(embeds)
 
     print("Clustering comments...")
     cnator = Clusternator(embeds, 12)
