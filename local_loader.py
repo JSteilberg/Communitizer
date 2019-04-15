@@ -102,7 +102,6 @@ def sample_file_gen(filename,
 
 def sample_file_gen_multi(filename,
                 subreddits={'all': 1.0},
-                flip=False,
                 min_score=-1e15):
     """
     Purpose: Returns a subset of the given comments based on following parameters
@@ -110,7 +109,6 @@ def sample_file_gen_multi(filename,
                         SHOULD BE CLEANED PRIOR TO INPUT
            gram_num   - Size of word-level grams to create. e.g. 1 = unigrams
            subreddits - Subreddits to sample from, defaults to all reddit; includes samp rate
-           flip       - If set to True, samples from all BUT subreddit sub_name
            min_score  - Toss comments with less than this amount of score
     Returns: Generator for comments constituting a sample
     """
@@ -124,12 +122,15 @@ def sample_file_gen_multi(filename,
     for line in file:
         # Loop through each comment in the dataset
         js = json.loads(line)
-        if 'all' in subreddits  \
-           or (js['subreddit'].lower() in subreddits and not flip) \
-           or (js['subreddit'].lower() in subreddits and flip):
-            # If the comment is from our subreddit, sample at special rate
-            if random.random() <= subreddits[js['subreddit'].lower()]:
-                yield js
+        inred = js['subreddit'].lower()
+        # Sample comments
+        if js['score'] >= min_score:
+            if inred in subreddits:
+                if random.random() <= subreddits[inred]:
+                    yield js
+            elif 'all' in subreddits:
+                if random.random() <= subreddits['all']:
+                    yield js
 
 
 
