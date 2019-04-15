@@ -21,6 +21,8 @@ import numpy as np
 from collections import Counter
 from spherecluster import SphericalKMeans
 import utils
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 import pdb
 
 
@@ -91,3 +93,28 @@ class Clusternator:
         print(str(cluster_subreddit_dict))
         return cluster_subreddit_dict
 
+    def get_subreddit_similarity(self, df, sub_embed_dict, model, n):
+        """
+        Purpose: Given a df containing some comments in particular clusters,
+                 this method does a cosine similarity between each cluster and
+                 each subreddit, returning a df that compares a subreddit to a
+                 cluster and contains cosine similarity.
+        :param df: A dataframe containing comments and their clusters.
+        :param sub_embed_dict: A dictionary with {subreddit: embedding vector}
+        :param model: The word2vec model to embed each cluster with.
+        :param n: The number of words to consider per df
+        :return: A DF with (Cluster, Subreddit, Cosine Similarity)
+        """
+        d = []
+        for c_num in range(0, self.n_cluster):
+            cluster_df = df.loc[df['Cluster_Num'] == c_num]
+            cluster_embedding = utils.get_embedding(model, utils.get_top_n_words(cluster_df, n))
+            for subreddit in sub_embed_dict:
+                subreddit_embedding = sub_embed_dict[subreddit]
+                pdb.set_trace()
+                sub_clust_sim = abs(cosine_similarity([cluster_embedding],
+                                                      [subreddit_embedding])[0][0])
+                d.append((c_num, subreddit, sub_clust_sim))
+            df = pd.DataFrame(d, columns=('Cluster_Num', 'Subreddit', 'Similarity'))
+
+        return df
