@@ -18,15 +18,12 @@
 ################################################################################
 
 
-from datetime import datetime
 from pandas import Series
-from data_clean import DataCleaner
 from data_clean_df import DataCleanerDF
 from cluster import Clusternator
 from gensim.models import Word2Vec
 import pdb
 import utils
-from spherecluster import VonMisesFisherMixture
 import numpy as np
 
 DATA_FILE = 'test.dat'

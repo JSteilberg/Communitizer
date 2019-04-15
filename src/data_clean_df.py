@@ -21,8 +21,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
-import pdb
-from local_loader import sample_file_gen_multi, sample_clean_file
+from local_loader import sample_file_gen_multi
 from params import make_csv_dict
 from gensim.models import Word2Vec
 from nltk.stem import PorterStemmer
