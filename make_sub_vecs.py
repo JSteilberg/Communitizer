@@ -50,11 +50,9 @@ def get_top_keys(uni_dict, num):
     return [k[0] for k in topnum]
 
 
-def main():
-    dc = DataCleanerDF('', CLEAN)
-    
+def create_sub_embed_dict(dc, file):
     SUBS.append('all')
-    sub_dict = dict(zip(SUBS, np.append(np.ones(len(SUBS)-1), ALL_SAMP_RATE)))
+    sub_dict = dict(zip(SUBS, np.append(np.ones(len(SUBS) - 1), ALL_SAMP_RATE)))
 
     uni_dict = dict()
     for key in SUBS:
@@ -63,7 +61,7 @@ def main():
     print("Calculating unique unigrams per subreddit and normalizing...")
 
     # Loop over all the comments
-    for comment in sample_file_gen_multi(FILE, subreddits=sub_dict, min_score=2):
+    for comment in sample_file_gen_multi(file, subreddits=sub_dict, min_score=2):
         subreddit = comment['subreddit']
         clean = dc.clean_comment_stage_1(comment)
 
@@ -115,9 +113,12 @@ def main():
 
         vect /= np.linalg.norm(vect)
         embed_dict[subreddit] = vect
-    
-    pdb.set_trace()
 
     return embed_dict
+
+
+def main():
+    dc = DataCleanerDF(FILE, CLEAN)
+    sub_embed_dict = create_sub_embed_dict(dc, FILE)
 
 main()
