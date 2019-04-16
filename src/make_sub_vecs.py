@@ -26,9 +26,7 @@ from data_clean_df import DataCleanerDF
 from cluster import Clusternator
 import utils
 
-FILE = './data/raw/' + 'RC_2007-02'
-# MODEL = './models/' + 'RC_2015-06_model'
-MODEL = './models/' + 'RC_2013-05_model'
+FILE = 'RC_2015-06_sub'
 CLEAN = './cfg/' + 'clean_params/clean_params.csv'
 NUM_WORDS = 30
 # SUBS = ['politics', 'programming', 'science']
@@ -112,7 +110,7 @@ def create_sub_embed_dict(dc, file, model):
 
 
 def main():
-    cnator = Clusternator('RC_2007-02', CLEAN, 3)
+    cnator = Clusternator(FILE, CLEAN, 10)
     cnator.prepare_data()
 
     print("Loading Word2Vec model...")
@@ -120,11 +118,12 @@ def main():
 
     sub_embed_dict = cnator.dc.create_sub_embed_dict(SUBS, cnator.model, ALL_SAMP_RATE, NUM_WORDS)
 
-    skm = cnator.run_k_means()
+    cnator.run_k_means()
 
     print("Calculating cluster subreddit similarity...")
-    sim_df = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
+    sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
     pdb.set_trace()
+    score = cnator.evaluate_cluster(cluster_subreddit_labels)
 
 
 main()

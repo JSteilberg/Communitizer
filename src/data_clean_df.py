@@ -84,7 +84,6 @@ class DataCleanerDF:
     def make_comment_embeddings(self, model):
         num_comments = self.df.count()['Cleaned_Comment']
         comm_mat = np.ndarray([num_comments, model.vector_size], dtype=np.float32)
-        one_row = np.zeros([model.vector_size], dtype=np.float32)
 
         row_num = 0
         d = []

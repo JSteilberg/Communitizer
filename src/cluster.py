@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
-
 from collections import Counter
 from spherecluster import SphericalKMeans
 import utils
@@ -54,7 +53,6 @@ class Clusternator:
 
         print("Converting comments to embedding vectors...")
         self.dc.make_comment_embeddings(self.model)
-
 
     def run_k_means(self):
         if self.dc is None:
@@ -130,17 +128,46 @@ class Clusternator:
         :param model: The word2vec model to embed each cluster with.
         :param n: The number of words to consider per df
         :return: A DF with (Cluster, Subreddit, Cosine Similarity)
+        :return: An array with the most similar subreddit per cluster
         """
         d = []
+        cluster_subreddit_labels = []
         for c_num in range(0, self.n_cluster):
             cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
             cluster_embedding = utils.get_embedding(model, utils.get_top_n_words(cluster_df, n))
+            max_sim = -float('inf')
+            cluster_subreddit = None
+
             for subreddit in sub_embed_dict:
                 subreddit_embedding = sub_embed_dict[subreddit]
                 sub_clust_sim = abs(cosine_similarity([cluster_embedding],
                                                       [subreddit_embedding])[0][0])
+                if sub_clust_sim > max_sim:
+                    max_sim = sub_clust_sim
+                    cluster_subreddit = subreddit
                 d.append((c_num, subreddit, sub_clust_sim))
+
+            cluster_subreddit_labels.append(cluster_subreddit)
 
         res_df = pd.DataFrame(d, columns=('Cluster_Num', 'Subreddit', 'Similarity'))
 
-        return res_df
+        return res_df, cluster_subreddit_labels
+
+    def evaluate_cluster(self, cluster_subreddit_labels):
+        """
+        Determine the max avg similar subreddit to this cluster.
+        Count the number of correctly clustered subreddits, and divide
+        by the total number of subreddits.
+        :param cluster_subreddit_labels: A list of subreddit labels per cluster
+        :return: A percentage correct
+        """
+        correct = 0
+        for c_num in range(0, self.n_cluster):
+            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_subreddit = cluster_subreddit_labels[c_num]
+            for row in cluster_df.itertuples():
+                row_subreddit = getattr(row, "Subreddit")
+
+                if row_subreddit == cluster_subreddit:
+                    correct += 1
+        return correct / len(self.dc.df.index)
