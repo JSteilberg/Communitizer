@@ -61,20 +61,25 @@ class DataCleanerDF:
         Output: Nothing
         """
 
-        # This is for things that require no overarching knowledge
-        # of the dataset. For example, removing non-alphanum characters
-        print("First stage cleaning...")
-        stats = self.clean_data_stage_1(
-            sample_file_gen_multi(self.data_loc,
-                            self.subreddits,
-                            min_score=self.min_score))
+        clean_df_filepath = "./data/clean/" + str(self.s2_df_clean_loc)
+        if utils.filepath_exists(clean_df_filepath):
+            print("Loaded old, clean file")
+            self.df = pd.read_csv(clean_df_filepath)
+        else:
+            # This is for things that require no overarching knowledge
+            # of the dataset. For example, removing non-alphanum characters
+            print("First stage cleaning...")
+            stats = self.clean_data_stage_1(
+                sample_file_gen_multi(self.data_loc,
+                                self.subreddits,
+                                min_score=self.min_score))
 
-        # This is for things that rely on stats collected by the
-        # first stage cleaner. For example, removing words of less
-        # than a given frequency, which requires having already gone
-        # over the data once.
-        print("Second stage cleaning...")
-        self.clean_data_stage_2(stats['unigrams'])
+            # This is for things that rely on stats collected by the
+            # first stage cleaner. For example, removing words of less
+            # than a given frequency, which requires having already gone
+            # over the data once.
+            print("Second stage cleaning...")
+            self.clean_data_stage_2(stats['unigrams'])
 
     def create_model(self):
         corpus_file = "\n".join(self.df['Cleaned_Comment'])
