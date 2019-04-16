@@ -26,8 +26,8 @@ from params import make_csv_dict
 from gensim.models import Word2Vec
 from nltk.stem import PorterStemmer
 from stop_words import get_stop_words
-import utils
 import gc
+import utils
 
 
 class DataCleanerDF:
@@ -89,6 +89,8 @@ class DataCleanerDF:
         row_num = 0
         d = []
         for row in self.df.itertuples():
+            one_row = np.zeros([model.vector_size], dtype=np.float32)
+
             cleaned_comment = getattr(row, "Cleaned_Comment")
             subreddit = getattr(row, "Subreddit")
             original_comment = getattr(row, "Original")
@@ -106,12 +108,12 @@ class DataCleanerDF:
             if not has_model_words:
                 print("very bad")
             d.append((subreddit, original_comment, cleaned_comment, one_row))
-            one_row[:] = 0
-
         df = pd.DataFrame(d, columns=('Subreddit',
                                       'Original',
                                       'Cleaned_Comment',
                                       'Embedded_Comment'))
+        np.random.shuffle(df['Embedded_Comment'])
+
         self.df = df
         gc.collect()  # ensure previous df is gone from memory
 
@@ -247,3 +249,73 @@ class DataCleanerDF:
 
         return " ".join(newCom)
 
+    def create_sub_embed_dict(self, subs, model, all_samp_rate, num_words):
+        subs.append('all')
+        sub_dict = dict(zip(subs, np.append(np.ones(len(subs) - 1), all_samp_rate)))
+
+        uni_dict = dict()
+        for key in subs:
+            uni_dict[key] = dict()
+
+        print("Calculating unique unigrams per subreddit and normalizing...")
+
+        # Loop over all the comments
+        for comment in sample_file_gen_multi(self.data_loc, subreddits=sub_dict, min_score=2):
+            subreddit = comment['subreddit']
+            clean = self.clean_comment_stage_1(comment)
+
+            # Go through each word in the cleaned comment, adding it to the
+            # unigram dictionary for both its relevant subreddit (if applicable)
+            # and the all-of-reddit unigram dictionary
+            for word in clean.split():
+                # Relevant subreddit
+                if subreddit in uni_dict:
+                    if word in uni_dict[subreddit]:
+                        uni_dict[subreddit][word] += 1.0
+                    else:
+                        uni_dict[subreddit][word] = 1.0
+
+                # All of reddit
+                if word in uni_dict['all']:
+                    uni_dict['all'][word] += 1.0
+                else:
+                    uni_dict['all'][word] = 1.0
+
+        for subreddit in uni_dict:
+
+            max = -float('inf')
+            for word in uni_dict[subreddit]:
+                if uni_dict[subreddit][word] > max:
+                    max = uni_dict[subreddit][word]
+
+            for word in uni_dict[subreddit]:
+                uni_dict[subreddit][word] /= max
+
+        for subreddit in uni_dict:
+            if subreddit == 'all':
+                continue
+
+            for word in uni_dict[subreddit]:
+                uni_dict[subreddit][word] -= 1.0 * uni_dict['all'][word]
+
+        embed_dict = dict()
+
+        print("Creating embeddings per subreddit...")
+        for subreddit in uni_dict:
+            vect = np.zeros(model.vector_size, dtype=np.float32)
+            for word in utils.get_top_keys(uni_dict[subreddit], num_words):
+                if word in model.wv:
+                    vect += model[word]
+
+            # This will sometimes happen if you're processing a dataset using a
+            # Word2Vec model trained on a different dataset. Ideally, it won't
+            # happen too much, and if it does we just turn the vector into a random
+            # noise vector to avoid biasing the results.
+            if np.linalg.norm(vect) < .00000001:
+                vect = np.random.random(len(vect))
+                print("Bad! This shouldn't happen more than like 20 times.")
+
+            vect /= np.linalg.norm(vect)
+            embed_dict[subreddit] = vect
+
+        return embed_dict

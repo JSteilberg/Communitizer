@@ -24,14 +24,15 @@ from pandas import Series
 from local_loader import sample_file_gen_multi
 from data_clean_df import DataCleanerDF
 from cluster import Clusternator
+import utils
 
 FILE = './data/raw/' + 'RC_2007-02'
 # MODEL = './models/' + 'RC_2015-06_model'
-MODEL = './models/' + 'RC_2007-02_model'
+MODEL = './models/' + 'RC_2013-05_model'
 CLEAN = './cfg/' + 'clean_params/clean_params.csv'
 NUM_WORDS = 30
 # SUBS = ['politics', 'programming', 'science']
-SUBS = ['programming']
+SUBS = ['programming', 'politics', 'niggers', 'groids', 'fatpeoplehate']
 
 ALL_SAMP_RATE = .2
 
@@ -44,13 +45,6 @@ def print_top(uni_dict, num):
                          reverse=True)[:num]
         for word in topnum:
             print("    " + str(word[0]) + ": " + str(word[1]))
-
-
-def get_top_keys(uni_dict, num):
-    topnum =  sorted(uni_dict.items(),
-                     key=lambda x: x[1],
-                     reverse=True)[:num]
-    return [k[0] for k in topnum]
 
 
 def create_sub_embed_dict(dc, file, model):
@@ -107,7 +101,7 @@ def create_sub_embed_dict(dc, file, model):
     print("Creating embeddings per subreddit...")
     for subreddit in uni_dict:
         vect = np.zeros(model.vector_size, dtype=np.float32)
-        for word in get_top_keys(uni_dict[subreddit], NUM_WORDS):
+        for word in utils.get_top_keys(uni_dict[subreddit], NUM_WORDS):
             if word in model.wv:
                 vect += model[word]
 
@@ -118,28 +112,18 @@ def create_sub_embed_dict(dc, file, model):
 
 
 def main():
-    dc = DataCleanerDF(FILE, CLEAN)
+    cnator = Clusternator('RC_2007-02', CLEAN, 3)
+    cnator.prepare_data()
 
     print("Loading Word2Vec model...")
-    model = Word2Vec.load(MODEL)
+    model = cnator.model
 
-    sub_embed_dict = create_sub_embed_dict(dc, FILE, model)
+    sub_embed_dict = cnator.dc.create_sub_embed_dict(SUBS, cnator.model, ALL_SAMP_RATE, NUM_WORDS)
 
-    print("Preparing comments to cluster...")
-    dc.load_data_for_word2vec()
-    embeds = dc.make_comment_embeddings(model)
-    np.random.shuffle(embeds)
-
-    df = dc.df
-
-    print("Clustering comments...")
-    cnator = Clusternator(embeds, 3)
     skm = cnator.run_k_means()
 
-    df['Cluster_Num'] = Series(skm.labels_, index=df.index)
-
     print("Calculating cluster subreddit similarity...")
-    sim_df = cnator.get_subreddit_similarity(df, sub_embed_dict, model, 10)
+    sim_df = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
     pdb.set_trace()
 
 
