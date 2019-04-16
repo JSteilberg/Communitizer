@@ -18,51 +18,28 @@
 ################################################################################
 
 
-from pandas import Series
-from data_clean_df import DataCleanerDF
 from cluster import Clusternator
-from gensim.models import Word2Vec
 import pdb
 import utils
-import numpy as np
 
 DATA_FILE = 'test.dat'
 DATA_FILE2 = 'RC_2007-06'
 
+
 def main():
     data = DATA_FILE2
-    cleaner = DataCleanerDF('./data/raw/' + data, './cfg/clean_params/clean_params.csv')
+    cnator = Clusternator(data, './cfg/clean_params/clean_params.csv', 5)
+    cnator.prepare_data()
+    cnator.run_k_means()
 
-    cleaner.load_data_for_word2vec()
-
-    print("Getting model...")
-    model_filepath = "./models/" + str(data + "_model")
-    if utils.filepath_exists(model_filepath):
-        model = Word2Vec.load(model_filepath)
-    else:
-        model = cleaner.create_model()
-        model.save(model_filepath)
-
-    df = cleaner.df
-
-    print("Converting comments to embedding vectors...")
-    embeds = cleaner.make_comment_embeddings(model)
-    np.random.shuffle(embeds)
-
-    print("Clustering comments...")
-    cnator = Clusternator(embeds, 12)
-    skm = cnator.run_k_means()
-
-    df['Cluster_Num'] = Series(skm.labels_, index=df.index)
-
-    cluster_commonword_dict = cnator.get_clusterwords(df, 15)
+    cluster_commonword_dict = cnator.get_clusterwords(15)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
 
-
-    df.to_csv('./clusters.csv')
+    cnator.dc.df.to_csv('./clusters.csv')
     print("Evaluating Clusters...")
-    cnator.get_cluster_stats(df)
+    cnator.get_cluster_stats()
     pdb.set_trace()
 
 
 main()
+

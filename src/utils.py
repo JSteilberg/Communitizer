@@ -62,3 +62,17 @@ def make_df_embedding(df, model, n):
     """
     top_words = get_top_n_words(df, n)
     return get_embedding(model, top_words)
+
+
+def get_top_keys(uni_dict, num):
+    topnum =  sorted(uni_dict.items(),
+                     key=lambda x: x[1],
+                     reverse=True)[:num]
+    return [k[0] for k in topnum]
+
+
+def convert_lol_to_numpy(lol):
+    rol = []
+    for l in lol:
+        rol.append(np.array(l))
+    return np.array(rol)

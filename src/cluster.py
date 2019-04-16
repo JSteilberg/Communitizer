@@ -16,30 +16,56 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
-
 from collections import Counter
 from spherecluster import SphericalKMeans
 import utils
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
+from data_clean_df import DataCleanerDF
+from gensim.models import Word2Vec
+from pandas import Series
 
 
 class Clusternator:
 
-    def __init__(self, data, num_clusters):
-        self.data = data
+    def __init__(self, data_filename, params_loc, num_clusters):
+        self.data_filename = data_filename
+        self.params_loc = params_loc
         self.n_cluster = num_clusters
         self.skm = SphericalKMeans(n_clusters=self.n_cluster)
 
+        self.model = None
+        self.dc = None
+
+    def prepare_data(self):
+        self.dc = DataCleanerDF('./data/raw/' + self.data_filename,
+                                self.params_loc)
+        self.dc.load_data_for_word2vec()
+
+        print("Getting model...")
+        model_filepath = "./models/" + str(self.data_filename + "_model")
+        if utils.filepath_exists(model_filepath):
+            self.model = Word2Vec.load(model_filepath)
+        else:
+            model = self.dc.create_model()
+            model.save(model_filepath)
+            self.model = model
+
+        print("Converting comments to embedding vectors...")
+        self.dc.make_comment_embeddings(self.model)
+
     def run_k_means(self):
-        self.skm.fit(self.data)
+        if self.dc is None:
+            raise RuntimeError("Must prepare data before running k means")
+        print("Clustering comments...")
+        data = utils.convert_lol_to_numpy(self.dc.df['Embedded_Comment'])
+        self.skm.fit(data)
+        self.dc.df['Cluster_Num'] = Series(self.skm.labels_, index=self.dc.df.index)
 
-        return self.skm
-
-    def get_clusterwords(self, df, n_most_common):
+    def get_clusterwords(self, n_most_common):
         cluster_commonword_dict = dict()
         for c_num in range(0, self.n_cluster):
-            cluster_df = df.loc[df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
             cluster_commonwords = Counter()
             for row in cluster_df.itertuples():
                 comment = getattr(row, "Cleaned_Comment")
@@ -51,7 +77,7 @@ class Clusternator:
             cluster_commonword_dict[c_num] = most_common_words
         return cluster_commonword_dict
 
-    def get_cluster_stats(self, df):
+    def get_cluster_stats(self):
         """
         Purpose: Given some df it determines the percentage of (all of
         the specific subreddits in the corpus) that a given cluster has.
@@ -68,11 +94,11 @@ class Clusternator:
         cluster_subreddit_dict = dict()
         corpus_subreddit_counts = dict()
 
-        for subreddit in df["Subreddit"].unique():
-            corpus_subreddit_counts[subreddit] = len(df[df["Subreddit"] == subreddit].index)
+        for subreddit in self.dc.df["Subreddit"].unique():
+            corpus_subreddit_counts[subreddit] = len(self.dc.df[self.dc.df["Subreddit"] == subreddit].index)
 
         for c_num in range(0, self.n_cluster):
-            cluster_df = df.loc[df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
             subreddit_counts = Counter()
 
             for row in cluster_df.itertuples():
@@ -91,7 +117,7 @@ class Clusternator:
         print(str(cluster_subreddit_dict))
         return cluster_subreddit_dict
 
-    def get_subreddit_similarity(self, df, sub_embed_dict, model, n):
+    def get_subreddit_similarity(self, sub_embed_dict, model, n):
         """
         Purpose: Given a df containing some comments in particular clusters,
                  this method does a cosine similarity between each cluster and
@@ -102,17 +128,46 @@ class Clusternator:
         :param model: The word2vec model to embed each cluster with.
         :param n: The number of words to consider per df
         :return: A DF with (Cluster, Subreddit, Cosine Similarity)
+        :return: An array with the most similar subreddit per cluster
         """
         d = []
+        cluster_subreddit_labels = []
         for c_num in range(0, self.n_cluster):
-            cluster_df = df.loc[df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
             cluster_embedding = utils.get_embedding(model, utils.get_top_n_words(cluster_df, n))
+            max_sim = -float('inf')
+            cluster_subreddit = None
+
             for subreddit in sub_embed_dict:
                 subreddit_embedding = sub_embed_dict[subreddit]
                 sub_clust_sim = abs(cosine_similarity([cluster_embedding],
                                                       [subreddit_embedding])[0][0])
+                if sub_clust_sim > max_sim:
+                    max_sim = sub_clust_sim
+                    cluster_subreddit = subreddit
                 d.append((c_num, subreddit, sub_clust_sim))
+
+            cluster_subreddit_labels.append(cluster_subreddit)
 
         res_df = pd.DataFrame(d, columns=('Cluster_Num', 'Subreddit', 'Similarity'))
 
-        return res_df
+        return res_df, cluster_subreddit_labels
+
+    def evaluate_cluster(self, cluster_subreddit_labels):
+        """
+        Determine the max avg similar subreddit to this cluster.
+        Count the number of correctly clustered subreddits, and divide
+        by the total number of subreddits.
+        :param cluster_subreddit_labels: A list of subreddit labels per cluster
+        :return: A percentage correct
+        """
+        correct = 0
+        for c_num in range(0, self.n_cluster):
+            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_subreddit = cluster_subreddit_labels[c_num]
+            for row in cluster_df.itertuples():
+                row_subreddit = getattr(row, "Subreddit")
+
+                if row_subreddit == cluster_subreddit:
+                    correct += 1
+        return correct / len(self.dc.df.index)
