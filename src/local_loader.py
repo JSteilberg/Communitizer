@@ -76,9 +76,7 @@ def sample_file_gen(filename,
                 min_score=-1e15):
     """
     Purpose: Returns a subset of the given comments based on following parameters
-    Input: data      - Data consisting a of a list of comments, which are dictionaries
-                       SHOULD BE CLEANED PRIOR TO INPUT
-           gram_num  - Size of word-level grams to create. e.g. 1 = unigrams
+    Input: filename  - File to sample from 
            subreddit - Subreddit to sample from, defaults to all reddit
            flip      - If set to True, samples from all BUT subreddit sub_name
            samp_rate - Proportion of total data to sample
@@ -104,15 +102,15 @@ def sample_file_gen(filename,
 
 
 def sample_file_gen_multi(filename,
-                subreddits={'all': 1.0},
-                min_score=-1e15):
+                          subreddits={'all': 1.0},
+                          min_score=-1e15,
+                          json_mode=True):
     """
-    Purpose: Returns a subset of the given comments based on following parameters
-    Input: data       - Data consisting a of a list of comments, which are dictionaries
-                        SHOULD BE CLEANED PRIOR TO INPUT
-           gram_num   - Size of word-level grams to create. e.g. 1 = unigrams
+    Purpose: Returns a subset of the comments in a given file
+    Input: filename   - File to sample from
            subreddits - Subreddits to sample from, defaults to all reddit; includes samp rate
            min_score  - Toss comments with less than this amount of score
+           json_mode  - Return comments as JSON or the literal line
     Returns: Generator for comments constituting a sample
     """
 
@@ -130,10 +128,16 @@ def sample_file_gen_multi(filename,
         if js['score'] >= min_score:
             if inred in subreddits:
                 if random.random() <= subreddits[inred]:
-                    yield js
+                    if json_mode:
+                        yield js
+                    else:
+                        yield line
             elif 'all' in subreddits:
                 if random.random() <= subreddits['all']:
-                    yield js
+                    if json_mode:
+                        yield js
+                    else:
+                        yield line
 
 
 def sample_clean_file(filename, sample_rate=1):
@@ -149,3 +153,15 @@ def sample_clean_file(filename, sample_rate=1):
     for line in file:
         if random.random() < sample_rate:
             yield line.strip().split(' ')
+
+
+def create_samp_file(in_fname, out_fname, samp_rates):
+    gen = sample_file_gen_multi(in_fname, samp_rates, json_mode = False)
+
+    out = open(out_fname, 'w')
+    for line in gen:
+        out.write(line)
+
+    out.close()
+
+        
