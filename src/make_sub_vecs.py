@@ -18,6 +18,8 @@
 ################################################################################
 import datetime
 import pdb
+
+import utils
 from cluster import Clusternator
 
 FILE = 'RC_2015-06_sub'
@@ -51,6 +53,9 @@ def main():
     print("Starting Clustering", str(datetime.datetime.now().time()))
     cnator.run_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
+    cluster_commonword_dict = cnator.get_clusterwords(15)
+    utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
+    cnator.dc.df.to_csv('./clusters.csv')
 
     print("Calculating cluster subreddit similarity...")
     sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
