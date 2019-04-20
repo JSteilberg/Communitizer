@@ -44,20 +44,22 @@ def main():
     cnator = Clusternator(FILE, CLEAN, 10)
     cnator.prepare_data()
 
-    print("Loading Word2Vec model...")
     model = cnator.model
 
     sub_embed_dict = cnator.dc.create_sub_embed_dict(SUBS, cnator.model, ALL_SAMP_RATE, NUM_WORDS)
 
+    print("Starting Clustering", str(datetime.datetime.now().time()))
     cnator.run_k_means()
+    print("Finished Clustering", str(datetime.datetime.now().time()))
 
     print("Calculating cluster subreddit similarity...")
     sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
     score = cnator.evaluate_cluster(cluster_subreddit_labels)
-    print("start time:", start_time)
-    print("end time: ", datetime.datetime.now().time())
+    print("Overall start time:", start_time)
+    print("Overall end time: ", datetime.datetime.now().time())
     print(str(cluster_subreddit_labels))
     print(str(score))
     pdb.set_trace()
+
 
 main()

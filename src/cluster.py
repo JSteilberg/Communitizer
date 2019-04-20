@@ -45,8 +45,10 @@ class Clusternator:
         print("Getting model...")
         model_filepath = "./models/" + str(self.data_filename + "_model")
         if utils.filepath_exists(model_filepath):
+            print("Loaded existing w2v model")
             self.model = Word2Vec.load(model_filepath)
         else:
+            print("Creating new model")
             model = self.dc.create_model()
             model.save(model_filepath)
             self.model = model
@@ -58,7 +60,7 @@ class Clusternator:
         if self.dc is None:
             raise RuntimeError("Must prepare data before running k means")
         print("Clustering comments...")
-        data = utils.convert_lol_to_numpy(self.dc.df['Embedded_Comment'])
+        data = utils.convert_lol_to_numpy(self.dc.embedded_comments)
         self.skm.fit(data)
         self.dc.df['Cluster_Num'] = Series(self.skm.labels_, index=self.dc.df.index)
 
