@@ -62,12 +62,12 @@ class Clusternator:
         print("Clustering comments...")
         data = utils.convert_lol_to_numpy(self.dc.embedded_comments)
         self.skm.fit(data)
-        self.dc.df['Cluster_Num'] = Series(self.skm.labels_, index=self.dc.df.index)
+        self.dc.training_df['Cluster_Num'] = Series(self.skm.labels_, index=self.dc.training_df.index)
 
     def get_clusterwords(self, n_most_common):
         cluster_commonword_dict = dict()
         for c_num in range(0, self.n_cluster):
-            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
             cluster_commonwords = Counter()
             for row in cluster_df.itertuples():
                 comment = getattr(row, "Cleaned_Comment")
@@ -96,11 +96,11 @@ class Clusternator:
         cluster_subreddit_dict = dict()
         corpus_subreddit_counts = dict()
 
-        for subreddit in self.dc.df["Subreddit"].unique():
-            corpus_subreddit_counts[subreddit] = len(self.dc.df[self.dc.df["Subreddit"] == subreddit].index)
+        for subreddit in self.dc.training_df["Subreddit"].unique():
+            corpus_subreddit_counts[subreddit] = len(self.dc.training_df[self.dc.training_df["Subreddit"] == subreddit].index)
 
         for c_num in range(0, self.n_cluster):
-            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
             subreddit_counts = Counter()
 
             for row in cluster_df.itertuples():
@@ -135,7 +135,7 @@ class Clusternator:
         d = []
         cluster_subreddit_labels = []
         for c_num in range(0, self.n_cluster):
-            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
             cluster_embedding = utils.get_embedding(model, utils.get_top_n_words(cluster_df, n))
             max_sim = -float('inf')
             cluster_subreddit = None
@@ -166,11 +166,11 @@ class Clusternator:
         """
         correct = 0
         for c_num in range(0, self.n_cluster):
-            cluster_df = self.dc.df.loc[self.dc.df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
             cluster_subreddit = cluster_subreddit_labels[c_num]
             for row in cluster_df.itertuples():
                 row_subreddit = getattr(row, "Subreddit")
 
                 if row_subreddit == cluster_subreddit:
                     correct += 1
-        return correct / len(self.dc.df.index)
+        return correct / len(self.dc.training_df.index)

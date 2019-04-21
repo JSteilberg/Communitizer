@@ -19,6 +19,8 @@
 
 import os
 import re
+from collections import Counter
+
 import pandas as pd
 import numpy as np
 from local_loader import sample_file_gen_multi
@@ -44,7 +46,8 @@ class DataCleanerDF:
         self.subreddits = self.params['subreddits']
         self.min_score = self.params['min_score']
 
-        self.df = None
+        self.training_df = None
+        self.test_df = None
 
         self.s2_df_clean_loc = os.path.join(os.path.dirname(self.data_loc),
                                             '../clean/',
@@ -78,21 +81,21 @@ class DataCleanerDF:
         self.clean_data_stage_2(stats['unigrams'], cleaned_comments_s1)
 
     def create_model(self):
-        if self.df is None:
+        if self.training_df is None:
             raise RuntimeError("Trying to create model without cleaning comments first")
-        corpus_file = "\n".join(self.df['Cleaned_Comment'])
+        corpus_file = "\n".join(self.training_df['Cleaned_Comment'])
         utils.write_to_filepath(corpus_file, self.clean_comments_loc)
         return Word2Vec(corpus_file=self.clean_comments_loc, size=200, window=3, negative=10, min_count=0, workers=4)
 
     def make_comment_embeddings(self, model):
-        num_comments = len(self.df['Cleaned_Comment'])
+        num_comments = len(self.training_df['Cleaned_Comment'])
         comm_mat = np.ndarray([num_comments, model.vector_size], dtype=np.float32)
 
         row_num = 0
         embeddings_array = []
         e = 1
-        len_df = len(self.df.index)
-        for idx, comment in enumerate(self.df['Cleaned_Comment']):
+        len_df = len(self.training_df.index)
+        for idx, comment in enumerate(self.training_df['Cleaned_Comment']):
             one_row = np.zeros([model.vector_size], dtype=np.float32)
             has_model_words = False
 
@@ -159,7 +162,7 @@ class DataCleanerDF:
         df = pd.DataFrame(data, columns=('Subreddit', 'Original'))
         df.Subreddit = df.Subreddit.astype('category')
         print("S1 Dataframe Created")
-        self.df = df
+        self.training_df = df
         stats = dict()
         stats['unigrams'] = unigrams
         return stats, cleaned_comments_s1
@@ -235,8 +238,8 @@ class DataCleanerDF:
         original_comment_array = []
         cleaned_comments_s2 = []
         e = 1
-        len_df = len(self.df.index)
-        for idx, row in enumerate(self.df.itertuples()):
+        len_df = len(self.training_df.index)
+        for idx, row in enumerate(self.training_df.itertuples()):
             comment_s1 = cleaned_comments_s1[idx].split()
             subreddit = getattr(row, "Subreddit")
             original_comment = getattr(row, "Original")
@@ -259,7 +262,7 @@ class DataCleanerDF:
 
         df = pd.DataFrame(data, columns=['Subreddit', 'Cleaned_Comment'])
         print("S2 Dataframe Created")
-        self.df = df
+        self.training_df = df
         self.original_comments = original_comment_array
         gc.collect()  # ensure previous df is gone from memory
         # self.cleaned_comments_s2 = cleaned_comments_s2
@@ -277,13 +280,17 @@ class DataCleanerDF:
 
         return " ".join(newCom)
 
+    def get_significant_subreddits(self, post_threshold):
+        subs_dict = dict()
+        for row in self.training_df.itertuples():
+            subreddit = getattr(row, "Subreddit")
+            utils.increment_dict(subreddit, subs_dict, 1)
+
+        return [k for (k, v) in subs_dict.items() if v > post_threshold]
+
     def create_sub_embed_dict(self, model, all_samp_rate, num_words):
-        all_subs = self.df.Subreddit.unique().tolist()
-        subs = []
-        for s in all_subs:
-            sub_count = len(self.df[(self.df['Subreddit'] == s)])
-            if sub_count > 100:
-                subs.append(s)
+        print("Getting significant subreddits")
+        subs = self.get_significant_subreddits(1000)
         subs.append('all')
         sub_dict = dict(zip(subs, np.append(np.ones(len(subs) - 1), all_samp_rate)))
 

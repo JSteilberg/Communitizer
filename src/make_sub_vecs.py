@@ -29,32 +29,21 @@ NUM_WORDS = 30
 ALL_SAMP_RATE = .2
 
 
-def print_top(uni_dict, num):
-    for subreddit in uni_dict:
-        print(subreddit + ":")
-        topnum =  sorted(uni_dict[subreddit].items(),
-                         key=lambda x: x[1],
-                         reverse=True)[:num]
-        for word in topnum:
-            print("    " + str(word[0]) + ": " + str(word[1]))
-
-
 def main():
     start_time = datetime.datetime.now().time()
-    cnator = Clusternator(FILE, CLEAN, 10)
     cnator = Clusternator(FILE, CLEAN, 2)
     cnator.prepare_data()
 
     model = cnator.model
 
-    sub_embed_dict = cnator.dc.create_sub_embed_dict(ALL_SAMP_RATE, NUM_WORDS)
+    sub_embed_dict = cnator.dc.create_sub_embed_dict(model, ALL_SAMP_RATE, NUM_WORDS)
 
     print("Starting Clustering", str(datetime.datetime.now().time()))
     cnator.run_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
     cluster_commonword_dict = cnator.get_clusterwords(6)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
-    cnator.dc.df.to_csv('./clusters.csv')
+    cnator.dc.training_df.to_csv('./clusters.csv')
 
     print("Calculating cluster subreddit similarity...")
     sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
