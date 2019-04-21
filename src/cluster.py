@@ -141,13 +141,14 @@ class Clusternator:
             cluster_subreddit = None
 
             for subreddit in sub_embed_dict:
-                subreddit_embedding = sub_embed_dict[subreddit]
-                sub_clust_sim = abs(cosine_similarity([cluster_embedding],
-                                                      [subreddit_embedding])[0][0])
-                if sub_clust_sim > max_sim:
-                    max_sim = sub_clust_sim
-                    cluster_subreddit = subreddit
-                d.append((c_num, subreddit, sub_clust_sim))
+                if subreddit != 'all':
+                    subreddit_embedding = sub_embed_dict[subreddit]
+                    sub_clust_sim = abs(cosine_similarity([cluster_embedding],
+                                                          [subreddit_embedding])[0][0])
+                    if sub_clust_sim > max_sim:
+                        max_sim = sub_clust_sim
+                        cluster_subreddit = subreddit
+                    d.append((c_num, subreddit, sub_clust_sim))
 
             cluster_subreddit_labels.append(cluster_subreddit)
 
