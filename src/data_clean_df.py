@@ -277,7 +277,13 @@ class DataCleanerDF:
 
         return " ".join(newCom)
 
-    def create_sub_embed_dict(self, subs, model, all_samp_rate, num_words):
+    def create_sub_embed_dict(self, model, all_samp_rate, num_words):
+        all_subs = self.df.Subreddit.unique().tolist()
+        subs = []
+        for s in all_subs:
+            sub_count = len(self.df[(self.df['Subreddit'] == s)])
+            if sub_count > 100:
+                subs.append(s)
         subs.append('all')
         sub_dict = dict(zip(subs, np.append(np.ones(len(subs) - 1), all_samp_rate)))
 
@@ -287,6 +293,8 @@ class DataCleanerDF:
 
         print("Calculating unique unigrams per subreddit and normalizing...")
 
+        i = 0
+        e = 1
         # Loop over all the comments
         for comment in sample_file_gen_multi(self.data_loc, subreddits=sub_dict, min_score=2):
             subreddit = comment['subreddit']
@@ -308,11 +316,15 @@ class DataCleanerDF:
                     uni_dict['all'][word] += 1.0
                 else:
                     uni_dict['all'][word] = 1.0
+            if i == e:
+                print(str(i), "Comments Counted")
+                e = e * 2
+            i += 1
+        print("All", str(i), "Comments Counted")
 
         print("Normalizing subreddit unigram counts")
 
         for subreddit in uni_dict:
-
             max = -float('inf')
             for word in uni_dict[subreddit]:
                 if uni_dict[subreddit][word] > max:

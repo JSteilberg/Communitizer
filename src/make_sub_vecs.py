@@ -25,8 +25,6 @@ from cluster import Clusternator
 FILE = 'RC_2015-06_sub'
 CLEAN = './cfg/' + 'clean_params/clean_params.csv'
 NUM_WORDS = 30
-# SUBS = ['politics', 'programming', 'science']
-SUBS = ['programming', 'politics', 'niggers', 'groids', 'fatpeoplehate']
 
 ALL_SAMP_RATE = .2
 
@@ -44,22 +42,24 @@ def print_top(uni_dict, num):
 def main():
     start_time = datetime.datetime.now().time()
     cnator = Clusternator(FILE, CLEAN, 10)
+    cnator = Clusternator(FILE, CLEAN, 2)
     cnator.prepare_data()
 
     model = cnator.model
 
-    sub_embed_dict = cnator.dc.create_sub_embed_dict(SUBS, cnator.model, ALL_SAMP_RATE, NUM_WORDS)
+    sub_embed_dict = cnator.dc.create_sub_embed_dict(ALL_SAMP_RATE, NUM_WORDS)
 
     print("Starting Clustering", str(datetime.datetime.now().time()))
     cnator.run_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
-    cluster_commonword_dict = cnator.get_clusterwords(15)
+    cluster_commonword_dict = cnator.get_clusterwords(6)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
     cnator.dc.df.to_csv('./clusters.csv')
 
     print("Calculating cluster subreddit similarity...")
     sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
     score = cnator.evaluate_cluster(cluster_subreddit_labels)
+    cnator.get_cluster_stats()
     print("Overall start time:", start_time)
     print("Overall end time: ", datetime.datetime.now().time())
     print(str(cluster_subreddit_labels))
