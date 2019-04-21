@@ -44,7 +44,7 @@ class DataCleaner:
         self.start_word  = self.params['start_word']
         self.stop_word   = self.params['stop_word']
         self.sample_rate = self.params['sample_rate']
-        self.subreddits   = self.params['subreddits']
+        self.subreddits  = self.params['subreddits']
         self.min_score   = self.params['min_score']
 
         self.mappings = []
@@ -71,8 +71,6 @@ class DataCleaner:
         stats = self.clean_data_stage_1(
             sample_file_gen_multi(self.data_loc,
                             self.subreddits,
-                            sample_rate=self.sample_rate,
-                            flip=False,
                             min_score=self.min_score))
 
         # This is for things that rely on stats collected by the
@@ -98,7 +96,10 @@ class DataCleaner:
             for word in comment:
                 if word in model.wv:
                     one_row += model.wv[word]
-            
+
+            if sum(one_row) < .0000001:
+                one_row = np.random.random(len(one_row))
+                
             one_row /= np.linalg.norm(one_row)
             comm_mat[num] = one_row
             one_row[:] = 0

@@ -24,20 +24,20 @@ from data_clean import DataCleaner
 from cluster import Clusternator
 
 
-cleaner = DataCleaner('./data/raw/RC_2007-02', './cfg/clean_params/clean_params.csv')
+cleaner = DataCleaner('../data/raw/RC_2007-02', '../cfg/clean_params/clean_params.csv')
 
 cleaner.load_data_for_word2vec()
 
 print("Creating model...")
 model = cleaner.create_model()
-model.save("./models/" + str(datetime.now()).replace(':', '.') + "_model")
+model.save("../models/" + str(datetime.now()).replace(':', '.') + "_model")
 
 print("Converting comments to embedding vectors...")
 embeds = cleaner.make_comment_embeddings(model)
 
 print("Clustering comments...")
-cnator = Clusternator(embeds)
-skm = cnator.run_k_means(3)
+cnator = Clusternator(embeds, 3)
+skm = cnator.run_k_means()
 
 import pdb
 pdb.set_trace()
