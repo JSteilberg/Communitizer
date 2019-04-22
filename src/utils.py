@@ -44,6 +44,14 @@ def get_top_n_words(df, n):
 
 
 def get_embedding(model, words):
+    """
+    Given some model and a list of words, it will
+    sum the word embeddings and then normalize them by
+    the magnitude of the vector.
+    :param model: Model to get embeddings from
+    :param words: List of words
+    :return: Return a normalized embedding
+    """
     vect = np.zeros(model.vector_size, dtype=np.float32)
     for word in words:
         if word in model.wv:

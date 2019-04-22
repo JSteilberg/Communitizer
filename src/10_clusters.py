@@ -30,7 +30,7 @@ ALL_SAMP_RATE = .15
 
 def main():
     start_time = datetime.datetime.now().time()
-    cnator = Clusternator(FILE, CLEAN, 6)
+    cnator = Clusternator(FILE, CLEAN, 10)
     cnator.prepare_data()
 
     model = cnator.model
@@ -41,9 +41,9 @@ def main():
     cnator.spherical_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
     cluster_commonword_dict = cnator.get_clusterwords(6)
-    utils.write_to_filepath(str(cluster_commonword_dict), "6clusterwords.txt")
+    utils.write_to_filepath(str(cluster_commonword_dict), "10clusterwords.txt")
     print("Creating clusters.csv", datetime.datetime.now().time())
-    cnator.dc.training_df.to_csv('./6clusters.csv')
+    cnator.dc.training_df.to_csv('./10clusters.csv')
     print("Created clusters.csv", datetime.datetime.now().time())
 
     print("Calculating cluster subreddit similarity...")
