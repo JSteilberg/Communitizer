@@ -22,7 +22,6 @@ import utils
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from data_clean_df import DataCleanerDF
-from gensim.models import Word2Vec
 from pandas import Series
 
 
@@ -42,27 +41,25 @@ class Clusternator:
                                 self.params_loc)
         self.dc.load_data_for_word2vec()
 
-        print("Getting model...")
+        print("Creating new model")
         model_filepath = "./models/" + str(self.data_filename + "_model")
-        if utils.filepath_exists(model_filepath):
-            print("Loaded existing w2v model")
-            self.model = Word2Vec.load(model_filepath)
-        else:
-            print("Creating new model")
-            model = self.dc.create_model()
-            model.save(model_filepath)
-            self.model = model
+        model = self.dc.create_model()
+        model.save(model_filepath)
+        self.model = model
 
         print("Converting comments to embedding vectors...")
         self.dc.make_comment_embeddings(self.model)
 
-    def run_k_means(self):
+    def spherical_k_means(self):
         if self.dc is None:
             raise RuntimeError("Must prepare data before running k means")
-        print("Clustering comments...")
-        data = utils.convert_lol_to_numpy(self.dc.embedded_comments)
+        print("Clustering training comments...")
+        data = utils.convert_lol_to_numpy(self.dc.training_embedded_comments)
         self.skm.fit(data)
         self.dc.training_df['Cluster_Num'] = Series(self.skm.labels_, index=self.dc.training_df.index)
+        test_data = utils.convert_lol_to_numpy(self.dc.testing_embedded_comments)
+        test_labels = self.skm.predict(test_data)
+        self.dc.test_df['Cluster_Num'] = test_labels
 
     def get_clusterwords(self, n_most_common):
         cluster_commonword_dict = dict()
@@ -166,11 +163,51 @@ class Clusternator:
         """
         correct = 0
         for c_num in range(0, self.n_cluster):
-            cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
+            cluster_df = self.dc.test_df.loc[self.dc.test_df['Cluster_Num'] == c_num]
             cluster_subreddit = cluster_subreddit_labels[c_num]
             for row in cluster_df.itertuples():
                 row_subreddit = getattr(row, "Subreddit")
 
                 if row_subreddit == cluster_subreddit:
                     correct += 1
-        return correct / len(self.dc.training_df.index)
+        return correct / len(self.dc.test_df.index)
+
+    def evaluate_hate_cluster(self, cluster_subreddit_labels, hate_subreddit):
+        correct = 0
+        hate_clustered_correctly = 0
+        hate_clustered_incorrectly = 0
+        total_hate_cluster = 0
+
+        non_hate_clustered_correctly = 0
+        non_hate_clustered_incorrectly = 0
+        total_non_hate_cluster = 0
+
+        for c_num in range(0, self.n_cluster):
+            cluster_df = self.dc.test_df.loc[self.dc.test_df['Cluster_Num'] == c_num]
+            cluster_subreddit = cluster_subreddit_labels[c_num]
+            if cluster_subreddit == hate_subreddit:
+                for row in cluster_df.itertuples():
+                    row_subreddit = getattr(row, "Subreddit")
+
+                    if row_subreddit == hate_subreddit:
+                        correct += 1
+                        hate_clustered_correctly += 1
+                    else:
+                        non_hate_clustered_incorrectly += 1
+                    total_hate_cluster += 1
+            else:
+                for row in cluster_df.itertuples():
+                    row_subreddit = getattr(row, "Subreddit")
+
+                    if row_subreddit != hate_subreddit:
+                        correct += 1
+                        non_hate_clustered_correctly += 1
+                    else:
+                        hate_clustered_incorrectly += 1
+                    total_non_hate_cluster += 1
+
+        total_acc = correct / len(self.dc.test_df.index)
+        hate_correct_percent = hate_clustered_correctly / total_hate_cluster
+        non_hate_correct_percent = non_hate_clustered_correctly / total_non_hate_cluster
+
+        return total_acc, hate_correct_percent, non_hate_correct_percent

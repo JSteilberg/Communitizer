@@ -26,7 +26,7 @@ FILE = 'RC_2015-06_sub'
 CLEAN = './cfg/' + 'clean_params/clean_params.csv'
 NUM_WORDS = 30
 
-ALL_SAMP_RATE = .2
+ALL_SAMP_RATE = .15
 
 
 def main():
@@ -39,20 +39,25 @@ def main():
     sub_embed_dict = cnator.dc.create_sub_embed_dict(model, ALL_SAMP_RATE, NUM_WORDS)
 
     print("Starting Clustering", str(datetime.datetime.now().time()))
-    cnator.run_k_means()
+    cnator.spherical_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
     cluster_commonword_dict = cnator.get_clusterwords(6)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
+    print("Creating clusters.csv", datetime.datetime.now().time())
     cnator.dc.training_df.to_csv('./clusters.csv')
+    print("Created clusters.csv", datetime.datetime.now().time())
 
     print("Calculating cluster subreddit similarity...")
     sim_df, cluster_subreddit_labels = cnator.get_subreddit_similarity(sub_embed_dict, model, 10)
-    score = cnator.evaluate_cluster(cluster_subreddit_labels)
+    total_acc, hate_correct_percent, non_hate_correct_percent = cnator.evaluate_hate_cluster(cluster_subreddit_labels, 'CoonTown')
+
     cnator.get_cluster_stats()
     print("Overall start time:", start_time)
     print("Overall end time: ", datetime.datetime.now().time())
     print(str(cluster_subreddit_labels))
-    print(str(score))
+    print("total accuracy", total_acc)
+    print("hate categorized correctly", hate_correct_percent)
+    print("non-hate categorized correctly", non_hate_correct_percent)
     pdb.set_trace()
 
 

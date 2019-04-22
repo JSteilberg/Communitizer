@@ -76,3 +76,49 @@ def convert_lol_to_numpy(lol):
     for l in lol:
         rol.append(np.array(l))
     return np.array(rol)
+
+
+def df_to_embeddings(df, model):
+    """
+    Given some df, it takes the clean comments and creates each into
+    an embedded comment in an array.
+    :param df: The given df
+    :param model: The w2v model to embed each comment with
+    :return: The array of 200 length embedded comments
+    """
+    num_comments = len(df['Cleaned_Comment'])
+    comm_mat = np.ndarray([num_comments, model.vector_size], dtype=np.float32)
+
+    row_num = 0
+    embeddings_array = []
+    e = 1
+    len_df = len(df.index)
+    for idx, comment in enumerate(df['Cleaned_Comment']):
+        one_row = np.zeros([model.vector_size], dtype=np.float32)
+        has_model_words = False
+
+        for word in comment.split():
+            if word in model.wv:
+                has_model_words = True
+                one_row += model.wv[word]
+
+        # This will sometimes happen if you're processing a dataset using a
+        # Word2Vec model trained on a different dataset. Ideally, it won't
+        # happen too much, and if it does we just turn the vector into a random
+        # noise vector to avoid biasing the results.
+        if not has_model_words:
+            one_row = np.random.random(len(one_row))
+            print("Bad! This shouldn't happen more than 20 times.")
+        else:
+            one_row /= np.linalg.norm(one_row)
+
+        comm_mat[row_num] = one_row
+        row_num += 1
+
+        embeddings_array.append(one_row)
+        if idx == e:
+            print(str(idx), "Comments Embedded", "Out of", str(len_df))
+            e = e * 2
+    print("All", str(len_df), "comments embedded")
+
+    return embeddings_array
