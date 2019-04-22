@@ -180,6 +180,8 @@ class DataCleanerDF:
 
         newcom = ""
         for word in comment.split():
+            if len(word) > 60:
+                continue
             # Maybe toss links
             if self.params['remove_links'] \
                     and ('http:/' in word or 'www.' in word):

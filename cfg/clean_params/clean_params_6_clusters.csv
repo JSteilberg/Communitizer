@@ -8,7 +8,7 @@ min_score,Minimum score required to keep a comment,int,-1000000
 lowercase,Lowercase all comments as part of preprocessing?,bool,TRUE
 sample_rate,"Proportion of actual comments to process from the given data [0,1]",float,1
 gram_num,n in ngrams,int,1
-subreddits,Subreddits to pick for communitizing,dict,"{'coontown':1.0, 'fatpeoplehate':1.0, 'all':0.35} "
+subreddits,Subreddits to pick for communitizing,dict,"{'coontown':0.6, 'gaming':1.0, 'programming':1.0, 'politics':1.0, 'science':1.0, 'technology':1.0} "
 remove_links,Should data cleaning remove all links?,bool,TRUE
 remove_punc,Should data cleaning remove all punctuation?,bool,FALSE
 only_alphanum,Remove all characters except alphanumeric ones?,bool,TRUE
