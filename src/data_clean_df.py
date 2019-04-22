@@ -19,6 +19,8 @@
 
 import os
 import re
+from collections import Counter
+
 import pandas as pd
 import numpy as np
 from local_loader import sample_file_gen_multi
@@ -44,15 +46,19 @@ class DataCleanerDF:
         self.subreddits = self.params['subreddits']
         self.min_score = self.params['min_score']
 
-        self.df = None
+        self.training_df = None
+        self.test_df = None
 
         self.s2_df_clean_loc = os.path.join(os.path.dirname(self.data_loc),
                                             '../clean/',
                                             os.path.basename(self.data_loc) + "_df_s2")
 
+        self.original_comments = None
         self.clean_comments_loc = os.path.join(os.path.dirname(self.data_loc),
                                                '../clean/',
                                                os.path.basename(self.data_loc) + "_clean_comments")
+        self.training_embedded_comments = None
+        self.testing_embedded_comments = None
 
     def load_data_for_word2vec(self):
         """
@@ -61,67 +67,30 @@ class DataCleanerDF:
         Output: Nothing
         """
 
-        clean_df_filepath = "./data/clean/" + str(self.s2_df_clean_loc)
-        if utils.filepath_exists(clean_df_filepath):
-            print("Loaded old, clean file")
-            self.df = pd.read_csv(clean_df_filepath)
-        else:
-            # This is for things that require no overarching knowledge
-            # of the dataset. For example, removing non-alphanum characters
-            print("First stage cleaning...")
-            stats = self.clean_data_stage_1(
-                sample_file_gen_multi(self.data_loc,
-                                self.subreddits,
-                                min_score=self.min_score))
+        # This is for things that require no overarching knowledge
+        # of the dataset. For example, removing non-alphanum characters
+        print("First stage cleaning...")
+        stats, cleaned_comments_s1 = self.clean_data_stage_1(sample_file_gen_multi(self.data_loc,
+                                                                                   self.subreddits,
+                                                                                   min_score=self.min_score))
 
-            # This is for things that rely on stats collected by the
-            # first stage cleaner. For example, removing words of less
-            # than a given frequency, which requires having already gone
-            # over the data once.
-            print("Second stage cleaning...")
-            self.clean_data_stage_2(stats['unigrams'])
+        # This is for things that rely on stats collected by the
+        # first stage cleaner. For example, removing words of less
+        # than a given frequency, which requires having already gone
+        # over the data once.
+        print("Second stage cleaning...")
+        self.clean_data_stage_2(stats['unigrams'], cleaned_comments_s1)
 
     def create_model(self):
-        corpus_file = "\n".join(self.df['Cleaned_Comment'])
+        if self.training_df is None:
+            raise RuntimeError("Trying to create model without cleaning comments first")
+        corpus_file = "\n".join(self.training_df['Cleaned_Comment'])
         utils.write_to_filepath(corpus_file, self.clean_comments_loc)
         return Word2Vec(corpus_file=self.clean_comments_loc, size=200, window=3, negative=10, min_count=0, workers=4)
 
     def make_comment_embeddings(self, model):
-        num_comments = self.df.count()['Cleaned_Comment']
-        comm_mat = np.ndarray([num_comments, model.vector_size], dtype=np.float32)
-
-        row_num = 0
-        d = []
-        for row in self.df.itertuples():
-            one_row = np.zeros([model.vector_size], dtype=np.float32)
-
-            cleaned_comment = getattr(row, "Cleaned_Comment")
-            subreddit = getattr(row, "Subreddit")
-            original_comment = getattr(row, "Original")
-            has_model_words = False
-
-            for word in cleaned_comment.split():
-                if word in model.wv:
-                    has_model_words = True
-                    one_row += model.wv[word]
-
-            one_row /= np.linalg.norm(one_row)
-            comm_mat[row_num] = one_row
-            row_num += 1
-
-            if not has_model_words:
-                print("very bad")
-            d.append((subreddit, original_comment, cleaned_comment, one_row))
-        df = pd.DataFrame(d, columns=('Subreddit',
-                                      'Original',
-                                      'Cleaned_Comment',
-                                      'Embedded_Comment'))
-        np.random.shuffle(df['Embedded_Comment'])
-
-        self.df = df
-        gc.collect()  # ensure previous df is gone from memory
-
-        return comm_mat
+        self.testing_embedded_comments = utils.df_to_embeddings(self.test_df, model)
+        self.training_embedded_comments = utils.df_to_embeddings(self.training_df, model)
 
     def clean_data_stage_1(self, data):
         """
@@ -134,7 +103,12 @@ class DataCleanerDF:
 
         unigrams = {}
 
-        d = []
+        subreddit_array = []
+        original_comment_array = []
+        cleaned_comments_s1 = []
+
+        i = 0
+        e = 1
 
         for json in data:
             subreddit = json['subreddit']
@@ -146,14 +120,26 @@ class DataCleanerDF:
                         unigrams[word] = 1
                     else:
                         unigrams[word] += 1
+                subreddit_array.append(subreddit)
+                original_comment_array.append(og_comment)
+                cleaned_comments_s1.append(comment)
+            if i == e:
+                print(str(i), "Comments Cleaned S1")
+                e = e * 2
+            i += 1
+        print("All", str(i), "Comments Cleaned S1")
 
-                d.append((subreddit, og_comment, comment))
+        data = {'Subreddit': subreddit_array,
+                'Original': original_comment_array
+                }
 
-        df = pd.DataFrame(d, columns=('Subreddit', 'Original', 'Comment_S1'))
-        self.df = df
+        df = pd.DataFrame(data, columns=('Subreddit', 'Original'))
+        df.Subreddit = df.Subreddit.astype('category')
+        print("S1 Dataframe Created")
+        self.training_df = df
         stats = dict()
         stats['unigrams'] = unigrams
-        return stats
+        return stats, cleaned_comments_s1
 
     def clean_comment_stage_1(self, comment):
         """
@@ -217,28 +203,45 @@ class DataCleanerDF:
 
         return comment
 
-    def clean_data_stage_2(self, uni_dict):
+    def clean_data_stage_2(self, uni_dict, cleaned_comments_s1):
         print("Stage 2")
 
         num_comments = 0
 
-        d = []
-
-        for row in self.df.itertuples():
-            comment_s1 = getattr(row, "Comment_S1").split()
+        subreddit_array = []
+        original_comment_array = []
+        cleaned_comments_s2 = []
+        e = 1
+        len_df = len(self.training_df.index)
+        for idx, row in enumerate(self.training_df.itertuples()):
+            comment_s1 = cleaned_comments_s1[idx].split()
             subreddit = getattr(row, "Subreddit")
             original_comment = getattr(row, "Original")
             comment_s2 = self.clean_comment_stage_2(comment_s1, uni_dict)
 
             if comment_s2 != '':
-                d.append((subreddit, original_comment, comment_s2))
+                subreddit_array.append(subreddit)
+                original_comment_array.append(original_comment)
+                cleaned_comments_s2.append(comment_s2)
             num_comments += 1
+            if idx == e:
+                print(str(idx), "Comments Cleaned S2", "Out of", str(len_df))
+                e = e * 2
+        print("All", str(len_df), "Comments Cleaned S2")
 
-        df = pd.DataFrame(d, columns=('Subreddit', 'Original', 'Cleaned_Comment'))
-        self.df = df
+        data = {
+                'Subreddit': subreddit_array,
+                'Cleaned_Comment': cleaned_comments_s2
+                }
+
+        df = pd.DataFrame(data, columns=['Subreddit', 'Cleaned_Comment'])
+        print("S2 Dataframe Created")
+        msk = np.random.rand(len(df)) < 0.8
+        self.training_df = df[msk]
+        self.test_df = df[~msk]
+        self.original_comments = original_comment_array
         gc.collect()  # ensure previous df is gone from memory
-
-        df.to_csv(self.s2_df_clean_loc)
+        # self.cleaned_comments_s2 = cleaned_comments_s2
 
     def clean_comment_stage_2(self, comment, uni_dict):
         """
@@ -253,7 +256,17 @@ class DataCleanerDF:
 
         return " ".join(newCom)
 
-    def create_sub_embed_dict(self, subs, model, all_samp_rate, num_words):
+    def get_significant_subreddits(self, post_threshold):
+        subs_dict = dict()
+        for row in self.training_df.itertuples():
+            subreddit = getattr(row, "Subreddit")
+            utils.increment_dict(subreddit, subs_dict, 1)
+
+        return [k for (k, v) in subs_dict.items() if v > post_threshold]
+
+    def create_sub_embed_dict(self, model, all_samp_rate, num_words):
+        print("Getting significant subreddits")
+        subs = self.get_significant_subreddits(1000)
         subs.append('all')
         sub_dict = dict(zip(subs, np.append(np.ones(len(subs) - 1), all_samp_rate)))
 
@@ -263,6 +276,8 @@ class DataCleanerDF:
 
         print("Calculating unique unigrams per subreddit and normalizing...")
 
+        i = 0
+        e = 1
         # Loop over all the comments
         for comment in sample_file_gen_multi(self.data_loc, subreddits=sub_dict, min_score=2):
             subreddit = comment['subreddit']
@@ -284,9 +299,15 @@ class DataCleanerDF:
                     uni_dict['all'][word] += 1.0
                 else:
                     uni_dict['all'][word] = 1.0
+            if i == e:
+                print(str(i), "Comments Counted")
+                e = e * 2
+            i += 1
+        print("All", str(i), "Comments Counted")
+
+        print("Normalizing subreddit unigram counts")
 
         for subreddit in uni_dict:
-
             max = -float('inf')
             for word in uni_dict[subreddit]:
                 if uni_dict[subreddit][word] > max:
@@ -294,6 +315,8 @@ class DataCleanerDF:
 
             for word in uni_dict[subreddit]:
                 uni_dict[subreddit][word] /= max
+
+        print("Calculating set difference of all unigrams from subreddits ")
 
         for subreddit in uni_dict:
             if subreddit == 'all':
@@ -317,7 +340,7 @@ class DataCleanerDF:
             # noise vector to avoid biasing the results.
             if np.linalg.norm(vect) < .00000001:
                 vect = np.random.random(len(vect))
-                print("Bad! This shouldn't happen more than like 20 times.")
+                print("Bad! This shouldn't happen more than 20 times.")
 
             vect /= np.linalg.norm(vect)
             embed_dict[subreddit] = vect

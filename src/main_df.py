@@ -30,7 +30,7 @@ def main():
     data = DATA_FILE2
     cnator = Clusternator(data, './cfg/clean_params/clean_params.csv', 5)
     cnator.prepare_data()
-    cnator.run_k_means()
+    cnator.spherical_k_means()
 
     cluster_commonword_dict = cnator.get_clusterwords(15)
     utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
