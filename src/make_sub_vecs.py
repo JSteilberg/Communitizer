@@ -42,9 +42,9 @@ def main():
     cnator.spherical_k_means()
     print("Finished Clustering", str(datetime.datetime.now().time()))
     cluster_commonword_dict = cnator.get_clusterwords(6)
-    utils.write_to_filepath(str(cluster_commonword_dict), "clusterwords.txt")
+    utils.write_to_filepath(str(cluster_commonword_dict), "2clusterwords.txt")
     print("Creating clusters.csv", datetime.datetime.now().time())
-    cnator.dc.training_df.to_csv('./clusters.csv')
+    cnator.dc.training_df.to_csv('./2clusters.csv')
     print("Created clusters.csv", datetime.datetime.now().time())
 
     print("Calculating cluster subreddit similarity...")
@@ -55,9 +55,9 @@ def main():
     print("Overall start time:", start_time)
     print("Overall end time: ", datetime.datetime.now().time())
     print(str(cluster_subreddit_labels))
-    print("total accuracy", total_acc)
-    print("hate categorized correctly", hate_correct_percent)
-    print("non-hate categorized correctly", non_hate_correct_percent)
+    print("total accuracy:", total_acc)
+    print("hate categorized correctly:", hate_correct_percent)
+    print("non-hate categorized correctly:", non_hate_correct_percent)
     pdb.set_trace()
 
 

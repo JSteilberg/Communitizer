@@ -24,7 +24,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from data_clean_df import DataCleanerDF
 from pandas import Series
 
-
+"""
+This class is responsible for loading data, cleaning it, 
+and then clustering them properly. It then does some analysis
+on these clusters.
+"""
 class Clusternator:
 
     def __init__(self, data_filename, params_loc, num_clusters):
@@ -37,12 +41,12 @@ class Clusternator:
         self.dc = None
 
     def prepare_data(self):
-        self.dc = DataCleanerDF('./data/raw/' + self.data_filename,
+        self.dc = DataCleanerDF('../data/raw/' + self.data_filename,
                                 self.params_loc)
         self.dc.load_data_for_word2vec()
 
         print("Creating new model")
-        model_filepath = "./models/" + str(self.data_filename + "_model")
+        model_filepath = "../models/" + str(self.data_filename + "_model")
         model = self.dc.create_model()
         model.save(model_filepath)
         self.model = model
@@ -51,6 +55,11 @@ class Clusternator:
         self.dc.make_comment_embeddings(self.model)
 
     def spherical_k_means(self):
+        """
+        Train the data on the training data, then label
+        the test data
+        :return:
+        """
         if self.dc is None:
             raise RuntimeError("Must prepare data before running k means")
         print("Clustering training comments...")
@@ -62,8 +71,15 @@ class Clusternator:
         self.dc.test_df['Cluster_Num'] = test_labels
 
     def get_clusterwords(self, n_most_common):
+        """
+        This method goes through each cluster and determines the n most common
+        words in each cluster
+        :param n_most_common: The number of most common words to select
+        :return: A dictionary with clusters to list
+        """
         cluster_commonword_dict = dict()
         for c_num in range(0, self.n_cluster):
+            print("Getting cluster words for cluster", c_num)
             cluster_df = self.dc.training_df.loc[self.dc.training_df['Cluster_Num'] == c_num]
             cluster_commonwords = Counter()
             for row in cluster_df.itertuples():
@@ -122,7 +138,6 @@ class Clusternator:
                  this method does a cosine similarity between each cluster and
                  each subreddit, returning a df that compares a subreddit to a
                  cluster and contains cosine similarity.
-        :param df: A dataframe containing comments and their clusters.
         :param sub_embed_dict: A dictionary with {subreddit: embedding vector}
         :param model: The word2vec model to embed each cluster with.
         :param n: The number of words to consider per df
@@ -173,6 +188,14 @@ class Clusternator:
         return correct / len(self.dc.test_df.index)
 
     def evaluate_hate_cluster(self, cluster_subreddit_labels, hate_subreddit):
+        """
+        Determines the number of hate comments and non-hate comments that
+        are correctly clustered
+        :param cluster_subreddit_labels: The cluster labels
+        :param hate_subreddit: The hate subreddit to focus on
+        :return: Accuracy of comments in the correct cluster, percent correctly
+                 grouped in hate, and percent correctly grouped in non-hate
+        """
         correct = 0
         hate_clustered_correctly = 0
         hate_clustered_incorrectly = 0

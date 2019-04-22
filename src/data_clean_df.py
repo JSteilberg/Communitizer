@@ -32,6 +32,13 @@ import gc
 import utils
 
 
+"""
+This class is meant to load comments from the file location that
+it is initialized with. It uses the local loader file to load json 
+comments. It cleans these comments in order to make a train and test
+set. It creates a w2v model using the train set. It embeds all comments
+in either set using the model.
+"""
 class DataCleanerDF:
 
     def __init__(self, data_loc, params_loc):
@@ -63,8 +70,6 @@ class DataCleanerDF:
     def load_data_for_word2vec(self):
         """
         Purpose: Loads and cleans data specified during init
-        Input: Nothing
-        Output: Nothing
         """
 
         # This is for things that require no overarching knowledge
@@ -82,6 +87,10 @@ class DataCleanerDF:
         self.clean_data_stage_2(stats['unigrams'], cleaned_comments_s1)
 
     def create_model(self):
+        """
+        Create the W2V model using the cleaned training data
+        :return: W2V Model
+        """
         if self.training_df is None:
             raise RuntimeError("Trying to create model without cleaning comments first")
         corpus_file = "\n".join(self.training_df['Cleaned_Comment'])
@@ -89,7 +98,14 @@ class DataCleanerDF:
         return Word2Vec(corpus_file=self.clean_comments_loc, size=200, window=3, negative=10, min_count=0, workers=4)
 
     def make_comment_embeddings(self, model):
+        """
+        Given a model this method encodes each of the comments
+        in each dataset and returns the embedding array.
+        :param model: The w2v model to use
+        """
+        print("Embedding test comments")
         self.testing_embedded_comments = utils.df_to_embeddings(self.test_df, model)
+        print("Embedding train comments")
         self.training_embedded_comments = utils.df_to_embeddings(self.training_df, model)
 
     def clean_data_stage_1(self, data):
@@ -256,17 +272,32 @@ class DataCleanerDF:
 
         return " ".join(newCom)
 
-    def get_significant_subreddits(self, post_threshold):
-        subs_dict = dict()
+    def get_significant_subreddits(self):
+        """
+        This method determines the 15 most common subreddits
+        in the training set
+        :return: List of 15 subreddit names
+        """
+        subs_dict = Counter()
         for row in self.training_df.itertuples():
             subreddit = getattr(row, "Subreddit")
             utils.increment_dict(subreddit, subs_dict, 1)
+        most_common_subs = subs_dict.most_common(15)
 
-        return [k for (k, v) in subs_dict.items() if v > post_threshold]
+        return [most_common_subs[i][0] for i in range(0, len(most_common_subs))]
 
     def create_sub_embed_dict(self, model, all_samp_rate, num_words):
+        """
+        This method takes the model, takes the top N words from the
+        significant subreddits in the training set and creates a dictionary
+        with an embedding vector representing each subreddit
+        :param model: W2V model to use to encode comments
+        :param all_samp_rate: The rate at which 'all' subreddits were sampled
+        :param num_words: The number of words to consider from each cluster
+        :return:
+        """
         print("Getting significant subreddits")
-        subs = self.get_significant_subreddits(1000)
+        subs = self.get_significant_subreddits()
         subs.append('all')
         sub_dict = dict(zip(subs, np.append(np.ones(len(subs) - 1), all_samp_rate)))
 
